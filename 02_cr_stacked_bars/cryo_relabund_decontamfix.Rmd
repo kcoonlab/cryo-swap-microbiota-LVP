@@ -1,0 +1,546 @@
+---
+title: "cryo_relabund"
+author: "Holly Nichols"
+date: "2024-01-15"
+output: html_document
+---
+
+#Cryo_relabund
+
+The goal of this analysis is to take a first look at the taxonomic abundance in the cryopreservation samples, especially across the follwoing axes: 
+
+* timepoint (duration of cryopreservation before thaw and use)
+* uni (the university where the experiment was conducted, and the source of the mozzies)
+* stock_origin (the university whence the stock came)
+* new_run (to see if the sequencing runs had any particular effect on the data)
+
+
+This code relies heavily on the microshades package, 
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(phyloseq)
+library(RColorBrewer)
+library(ggplot2)
+#remotes::install_github("KarstensLab/microshades", auth_token = "AUTH_GOES_HERE")
+library(microshades) #for a color-grouped relative abunance stacked bar plot 
+
+##this is what microshades wants me to load 
+library(cowplot)
+library(patchwork)
+library(forcats)
+library(tidyverse)
+######
+
+
+#import the decontam'd phyloseq object
+ps.decontam_cutoff = readRDS("../data/phyloseq/crPSdecontam_cutoff_12_11_2025")
+#4493 taxa and 595 samples
+
+
+
+
+
+
+```
+
+## Taxa barplots (relative abundance plots) 
+
+
+
+
+
+### Prepare data for microshades
+
+General outline on how to use microshades: 
+
+
+* Before starting, sub-sample data as approprate and glom to your taxonomic level of interest. 
+* make a "mdf_prep" object 
+* Create a color object 
+* extract plottable info from the color object 
+* if you want, change around the color of the Phyla using reassign_colors()
+* You can also add 5 more colors to any phyla - but be warned, this does not play nicely if you've also used reassign_colors()
+* Create a custom legend- it may get confused if you don't specify what subgroup you want 
+* Create the plot 
+* plot_grid to combine your custom legend and your beautiful barplot 
+
+
+
+# Creation of ps.filled
+
+any "empty" genus names called unclassified_Family
+
+
+```{r fill_tax_table}
+
+
+ps.filled <- ps.decontam_cutoff
+
+
+
+
+tax.clean <- data.frame(tax_table(ps.decontam_cutoff))
+
+
+
+#change empty spaces in tax_names to higher name levels
+#https://github.com/joey711/phyloseq/issues/990
+
+for (i in 1:nrow(tax.clean)){
+  if (tax.clean[i,2] == ""){
+  kingdom <- paste("Kingdom_", tax.clean[i,1], sep = "")
+  tax.clean[i, 2:7] <- kingdom
+  } else if (tax.clean[i,3] == ""){
+  phylum <- paste("Phylum_", tax.clean[i,2], sep = "")
+  tax.clean[i, 3:7] <- phylum
+  } else if (tax.clean[i,4] == ""){
+  class <- paste("Class_", tax.clean[i,3], sep = "")
+  tax.clean[i, 4:7] <- class
+  } else if (tax.clean[i,5] == ""){
+  order <- paste("Order_", tax.clean[i,4], sep = "")
+  tax.clean[i, 5:7] <- order
+  } else if (tax.clean[i,6] == ""){
+  family <- paste("Family_", tax.clean[i,5], sep = "")
+  tax.clean[i, 6:7] <- family
+  } else if (tax.clean[i,7] == ""){
+  tax.clean$Species[i] <- paste("Genus",tax.clean$Genus[i], sep = "_")
+  }
+}
+
+
+tax_table(ps.filled) <- as.matrix(tax.clean) #update teh tax table in your phyloseq object 
+
+saveRDS(ps.filled, "../data/phyloseq/crPSFilled")
+
+ps.filled = readRDS("../data/phyloseq/crPSFilled")
+
+
+
+
+
+#now glom 
+
+ps.genus_filled = tax_glom(ps.filled, taxrank = 'Genus') #glom to Genus level
+saveRDS(ps.genus_filled, "../data/phyloseq/crPSGenus_filled")
+# 956 genera, 595 samples
+# AFTER FILL - 1177 taxa!
+# after 3/12/24 - 1191 taxa
+#after 7/15/24 - 1177 taxa and 595 samples
+#after 12/12/2025 - 1177 taxa and 595 samples 
+
+
+#to load this in the future: 
+ps.genus_filled = readRDS("../data/phyloseq/crPSGenus_filled")
+
+
+
+ps.family_filled = tax_glom(ps.filled, taxrank = 'Family') #glom to Family level
+
+saveRDS(ps.family_filled, "../data/phyloseq/crPSFamily")
+ps.family_filled = readRDS("../data/phyloseq/crPSFamily")
+
+
+
+
+```
+
+
+# Donor pool relative abundance plots
+
+(preview, not final fig)
+
+
+```{r filled_homogenate}
+
+ps.genus_h = subset_samples(ps.genus_filled, sample_type == "homogenate")
+#78 samples - so 2 of the samples had <100 reads
+ps.genus_h <- prune_taxa(taxa_sums(ps.genus_h) > 0, ps.genus_h) #trim taxa not found in this subset
+#350 taxa
+
+
+mdf_prep_ggh <- ps.genus_h %>%
+        phyloseq::transform_sample_counts(function(x) { x/sum(x) }) %>%
+        psmelt() %>%
+        filter(Abundance > 0)
+
+
+
+#create a color object to be used in plotting
+#ok wild - just adding the _A to just the firmicutes seems to have solved the problem?? 
+color_obj_ggh <- microshades::create_color_dfs(mdf_prep_ggh, group_level= "Phylum", subgroup_level= "Genus", selected_groups = c("Proteobacteria", "Actinobacteriota", "Bacteroidota", "Firmicutes_D"))
+
+
+
+
+#extract
+mdf_ggh <- color_obj_ggh$mdf
+cdf_ggh<- color_obj_ggh$cdf
+
+base_plot_ggh <- plot_microshades(mdf_ggh, cdf_ggh)
+
+
+
+legend_ggh <-custom_legend(mdf_ggh, cdf_ggh)
+
+plot_ggh<- base_plot_ggh + scale_y_continuous(labels = scales::percent, expand = expansion(0)) +
+  theme(legend.position = "none")  +
+  theme(axis.text.x = element_text(size= 6)) +
+  facet_wrap(~uni, scales = "free_x", nrow = 2) +
+  theme(axis.text.x = element_blank(), axis.title.x=element_blank()) + 
+  theme(plot.margin = margin(6,6,6,6)) + ggtitle("Homogenate - Greengenes - Genus - FILLED")
+
+plot_grid(plot_ggh, legend_ggh,rel_widths = c(1, .3))
+
+#ggsave("./plots/homogenate_barplot_gg.pdf", height=5, width=9, device="pdf") 
+
+```
+
+
+
+
+
+
+## Generate a function to plot w/ microshades
+
+
+```{r}
+
+#define a function to plot various phyloseq objects
+
+make_microshades_plot <- function(ps,
+                                  facet_var,
+                                  nrow = 2,
+                                  title = "Microshades Plot") {
+  # prepare melted data
+  mdf_prep <- ps %>%
+    phyloseq::transform_sample_counts(function(x) { x/sum(x) }) %>%
+    psmelt() %>%
+    filter(Abundance > 0)
+  
+  # create color object
+  color_obj <- microshades::create_color_dfs(
+    mdf_prep,
+    group_level = "Phylum",
+    subgroup_level = "Genus",
+    selected_groups = c("Proteobacteria", 
+                        "Actinobacteriota",
+                        "Bacteroidota",
+                        "Firmicutes_D")
+  )
+  
+  # extract dfs
+  mdf <- color_obj$mdf
+  cdf <- color_obj$cdf
+  
+ cdf <- color_reassign(cdf,
+                           group_assignment = c("Proteobacteria", "Actinobacteriota","Bacteroidota","Firmicutes_D"),
+                           color_assignment = c("micro_green", "micro_orange","micro_blue","micro_brown"))
+
+
+  new_groups <- extend_group(mdf, cdf, "Phylum", "Genus", "Proteobacteria", existing_palette = "micro_green", new_palette = "micro_purple", n_add = 5)
+  #add 5 more slots to proteo
+  
+  
+  # base plot and legend
+  base_plot <- plot_microshades(new_groups$mdf, new_groups$cdf)
+  legend <- custom_legend(new_groups$mdf, new_groups$cdf)
+  
+  # build final plot
+  plot <- base_plot +
+    scale_y_continuous(labels = scales::percent, expand = expansion(0)) +
+    theme(legend.position = "none",
+          axis.text.x = element_text(size = 6),
+          plot.margin = margin(6,6,6,6),
+    # REMOVE GREY BACKGROUND!!
+      panel.background = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      plot.background = element_blank()
+    ) +
+    facet_wrap(as.formula(paste("~", facet_var)),
+               scales = "free_x",
+               nrow = nrow) +
+    ggtitle(title)
+  
+  # combine plot + legend
+  plot_grid(plot, legend, rel_widths = c(1, .7))
+}
+
+
+
+```
+
+
+
+
+
+
+
+# All individual mozzies, include donor pools (Fig 2)
+
+Raw material for Fig 2, rearranged for clarity in Inkscape
+
+
+extended proteos - 10 colors instead of 5
+Also may subset to just unfrozen + 6 months 
+```{r}
+
+ps.genus_filled
+
+########################### WORKING HERE 
+
+ps.genus_a_h <- subset_samples(ps.genus_filled, sample_type != "water" & sample_type != "larvae")
+
+plot_final <- make_microshades_plot(
+  ps = ps.genus_a_h, 
+  facet_var = "~interaction(timepoint, uni, tx)",
+  nrow = 4,
+  title = "All adults "
+)
+
+plot_final 
+#ggsave("./plots/SOVE/barplot_individuals_extendedproteo_donor_adults_xl.pdf", height=25, width=45, device="pdf") 
+
+
+
+
+```
+
+
+
+
+
+# Sample Type Story (suppemental figs 21 and 24)
+
+## Water samples (preview, not in manuscript)
+
+
+I'm interested in differences by timepoint and by uni_tx. 
+
+Particularly - do the actinos (esp. leucobacter) just not wake up after freeze (LSTM?) How do match vs mismatch water samples look? 
+
+
+
+```{r}
+
+ps.genus_water <- subset_samples(ps.genus_filled, sample_type == "water")
+
+
+mdf_prep_ggh <- ps.genus_water %>%
+        phyloseq::transform_sample_counts(function(x) { x/sum(x) }) %>%
+        psmelt() %>%
+        filter(Abundance > 0)
+
+color_obj_ggh <- microshades::create_color_dfs(mdf_prep_ggh, group_level= "Phylum", subgroup_level= "Genus", selected_groups = c("Proteobacteria", "Actinobacteriota", "Bacteroidota", "Firmicutes_D"))
+
+
+
+
+#extract
+mdf_ggh <- color_obj_ggh$mdf
+cdf_ggh<- color_obj_ggh$cdf
+
+base_plot_ggh <- plot_microshades(mdf_ggh, cdf_ggh)
+
+
+
+legend_ggh <-custom_legend(mdf_ggh, cdf_ggh)
+
+plot_ggh<- base_plot_ggh + scale_y_continuous(labels = scales::percent, expand = expansion(0)) +
+  theme(legend.position = "none")  +
+  theme(axis.text.x = element_text(size= 6)) +
+  facet_wrap(~interaction(timepoint, uni_tx), scales = "free_x", nrow = 2) +
+  theme(axis.text.x = element_blank(), axis.title.x=element_blank()) + 
+  theme(plot.margin = margin(6,6,6,6)) + ggtitle(" Water samples - Greengenes - Genus - FILLED")
+
+plot_grid(plot_ggh, legend_ggh,rel_widths = c(1, .3))
+#ggsave("./plots/water_unitx_tp_barplot_gg.pdf", height=5, width=9, device="pdf") 
+
+
+```
+
+
+
+## Larvae Samples (preview, not in manuscript)
+
+These mirror their water samples pretty closely. Note that we're missing larval samples from the UW side, these were lost somehow during the processing/library prep phase. 
+
+```{r}
+
+
+ps.genus_larvae <- subset_samples(ps.genus_filled, sample_type == "larvae")
+
+mdf_prep_ggh <- ps.genus_larvae %>%
+        phyloseq::transform_sample_counts(function(x) { x/sum(x) }) %>%
+        psmelt() %>%
+        filter(Abundance > 0)
+
+color_obj_ggh <- microshades::create_color_dfs(mdf_prep_ggh, group_level= "Phylum", subgroup_level= "Genus", selected_groups = c("Proteobacteria", "Actinobacteriota", "Bacteroidota", "Firmicutes_D"))
+
+
+
+
+#extract
+mdf_ggh <- color_obj_ggh$mdf
+cdf_ggh<- color_obj_ggh$cdf
+
+base_plot_ggh <- plot_microshades(mdf_ggh, cdf_ggh)
+
+
+
+legend_ggh <-custom_legend(mdf_ggh, cdf_ggh)
+
+plot_ggh<- base_plot_ggh + scale_y_continuous(labels = scales::percent, expand = expansion(0)) +
+  theme(legend.position = "none")  +
+  theme(axis.text.x = element_text(size= 6)) +
+  facet_wrap(~interaction(timepoint, uni_tx), scales = "free_x", nrow = 2) +
+  theme(axis.text.x = element_blank(), axis.title.x=element_blank(),
+        # REMOVE GREY BACKGROUND!!
+      panel.background = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      plot.background = element_blank()
+    )  + 
+  
+  theme(plot.margin = margin(6,6,6,6)) + ggtitle(" Larvae samples - Greengenes - Genus - FILLED")
+
+plot_grid(plot_ggh, legend_ggh,rel_widths = c(1, .3))
+#ggsave("./plots/larvae_unitx_tp_barplot_gg.pdf", height=5, width=9, device="pdf") 
+
+```
+
+
+# Within UW, compare larvae to water
+
+Additional File 21
+
+```{r}
+#subset to just UW larvae and water 
+
+
+ps.genus_uw_compare <- ps.genus_filled %>% subset_samples(uni == "UW") %>%
+                                           subset_samples(sample_type == "water" | sample_type == "larvae") 
+
+mdf_prep_ggh <- ps.genus_uw_compare %>%
+        phyloseq::transform_sample_counts(function(x) { x/sum(x) }) %>%
+        psmelt() %>%
+        filter(Abundance > 0)
+
+
+mdf_prep_ggh$sample_type <- factor(mdf_prep_ggh$sample_type, levels = c("water", "larvae"))
+
+color_obj_ggh <- microshades::create_color_dfs(mdf_prep_ggh, group_level= "Phylum", subgroup_level= "Genus", selected_groups = c("Proteobacteria", "Actinobacteriota", "Bacteroidota", "Firmicutes_D"))
+
+
+
+
+#extract
+mdf_ggh <- color_obj_ggh$mdf
+cdf_ggh<- color_obj_ggh$cdf
+
+base_plot_ggh <- plot_microshades(mdf_ggh, cdf_ggh)
+
+
+
+legend_ggh <-custom_legend(mdf_ggh, cdf_ggh)
+
+
+#need to reorder sample_type to be water then larvae 
+
+
+plot_ggh<- base_plot_ggh + scale_y_continuous(labels = scales::percent, expand = expansion(0)) +
+  theme(legend.position = "none")  +
+  theme(axis.text.x = element_text(size= 6)) +
+  facet_wrap(~interaction(timepoint, uni_tx, sample_type), scales = "free_x", nrow = 2) +
+  theme(axis.text.x = element_blank(), axis.title.x=element_blank(),
+          # REMOVE GREY BACKGROUND!!
+      panel.background = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      plot.background = element_blank()) + 
+  theme(plot.margin = margin(6,6,6,6)) + ggtitle(" UW Larvae and water samples - Greengenes - Genus - FILLED")
+
+
+#will need to rearrange plot in inkscape because it wants to put larve first 
+
+plot_grid(plot_ggh, legend_ggh,rel_widths = c(1, .3))
+#ggsave("./plots/barplot_uw_larvae_v_water.pdf", height=5, width=9, device="pdf") 
+
+
+```
+
+#Within LSTM, compare larvae to water
+
+Additional File 24
+
+```{r}
+
+#subset to just LSTM larvae and water 
+
+
+ps.genus_lstm_compare <- ps.genus_filled %>% subset_samples(uni == "LSTM") %>%
+                                           subset_samples(sample_type == "water" | sample_type == "larvae") 
+
+mdf_prep_ggh <- ps.genus_lstm_compare %>%
+        phyloseq::transform_sample_counts(function(x) { x/sum(x) }) %>%
+        psmelt() %>%
+        filter(Abundance > 0)
+
+
+mdf_prep_ggh$sample_type <- factor(mdf_prep_ggh$sample_type, levels = c("water", "larvae"))
+
+color_obj_ggh <- microshades::create_color_dfs(mdf_prep_ggh, group_level= "Phylum", subgroup_level= "Genus", selected_groups = c("Proteobacteria", "Actinobacteriota", "Bacteroidota", "Firmicutes_D"))
+
+
+
+
+#extract
+mdf_ggh <- color_obj_ggh$mdf
+cdf_ggh<- color_obj_ggh$cdf
+
+base_plot_ggh <- plot_microshades(mdf_ggh, cdf_ggh)
+
+
+
+legend_ggh <-custom_legend(mdf_ggh, cdf_ggh)
+
+
+#need to reorder sample_type to be water then larvae 
+
+
+plot_ggh<- base_plot_ggh + scale_y_continuous(labels = scales::percent, expand = expansion(0)) +
+  theme(legend.position = "none")  +
+  theme(axis.text.x = element_text(size= 6)) +
+  facet_wrap(~interaction(timepoint, uni_tx, sample_type), scales = "free_x", nrow = 2) +
+  theme(axis.text.x = element_blank(), axis.title.x=element_blank(),
+          # REMOVE GREY BACKGROUND!!
+      panel.background = element_blank(),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      panel.border = element_blank(),
+      plot.background = element_blank()) + 
+  theme(plot.margin = margin(6,6,6,6)) + ggtitle(" LSTM Larvae and water samples - Greengenes - Genus - FILLED")
+
+#get it to lavel with flask ID aka sorting_var
+
+head(base_plot_ggh)
+
+#will need to rearrange plot in inkscape because it wants to put larve first 
+
+plot_grid(plot_ggh, legend_ggh,rel_widths = c(1, .3))
+#ggsave("./plots/barplot_lstm_larvae_v_water.pdf", height=5, width=9, device="pdf") 
+
+```
+
+
+
+
+
+
+

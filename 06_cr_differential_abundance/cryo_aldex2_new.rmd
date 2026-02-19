@@ -1,0 +1,2230 @@
+---
+title: "cryo_aldex2_new"
+author: "Holly Nichols"
+date: "2024-12-09"
+output: html_document
+---
+
+# Differential Abundance Analysis with Aldex2
+
+**NOTE: aldex2 requires and oler version of R-I used 4.1.3 **
+
+
+Goals: 
+
+**Which ASVs change over cryopreservation?**
+UW-match adults - timepoint
+LSTM-match adults -  timepiont 
+
+
+**Which ASVs thrive in LSTM vs UW mosquitoes?**
+UW-match adults vs LSTM-mismatch adults 
+LSTM-match adults vs  UW-mismatch adults
+
+**Which ASVs are more common in samples that got LSTM vs UW homogenate? (stock_origin)**
+Use all adult samples, and the variable would be stock_origin
+
+
+
+**Which ASVs correlate with host fitness?**
+note: need to separate this by uni b/c LSTM generally had bigger wings and that would just confuse everything 
+Also need to think about what it means to test adult samples vs wing length, because all differences in wing length are set at the larval stage. 
+adult samples and wing_length
+larvae samples and wing_length
+water samples and wing_length
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(phyloseq)
+#BiocManager::install("ALDEx2")
+library(ALDEx2)
+library(tibble) #for rownames to column
+library(MetBrewer) #for pretty colors
+library(tidyverse)
+library(scales) #for graphs
+library(ggrepel) #for repulsive text on volcano plots 
+library(cowplot) #for theme on volcano plots 
+library(ggpubr) #another theme for plots 
+
+
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("ALDEx2")
+
+
+#import ps.filled 
+ps.filled = readRDS("phyloseq/..data/phyloseq/crPSFilled")
+
+
+
+
+
+```
+
+
+
+
+## UW-match adults - timepoint
+
+First, let's try aldex2 with just UW-match adults to see which taxa jump out as affected by the duration of cryopreservation (timepoint) (six levels)
+
+
+```{r uw-match timepoint}
+
+
+#first filter to just UW-match adults 
+
+ps.uw_match_a <- subset_samples(ps.filled, uni_tx == "UW-match" & sample_type == "adult")
+ps.uw_match_a <- prune_taxa(taxa_sums(ps.uw_match_a) > 0, ps.uw_match_a) 
+#1399 taxa and 138 samples
+
+sample_data(ps.uw_match_a)$timepoint <-as.factor(sample_data(ps.uw_match_a)$timepoint) #make uni_tx a factor
+
+head(otu_table(ps.uw_match_a))
+unique(sample_data(ps.uw_match_a)$timepoint)
+
+
+#this runs quickly
+aldex.clr.uwmatch_tp<-aldex.clr((as.data.frame(otu_table(ps.uw_match_a))),
+                             sample_data(ps.uw_match_a)$timepoint,
+                             mc.samples=128,
+                             denom="all",
+                             verbose=TRUE,
+                             useMC=FALSE)
+#recommedned that DMC (128) * number of samples in smallest group be at least 1000
+#quick math - need to have at least 7.8 samples in the smallest group to do this test 
+
+
+
+
+table(sample_data(ps.uw_match_a)$timepoint)
+
+
+
+
+# this is discrete for 3+ groups, there is also an option for continuous variables
+
+glm.kru.harvest.data.cluster<-aldex.kw(aldex.clr.uwmatch_tp) #started at 12:26 PM 7/15/24 Finished before 12:44PM 
+saveRDS(glm.kru.harvest.data.cluster, "aldex2/timepoint_uwmatch_adults")
+
+glm.kru.harvest.data.cluster = readRDS("./aldex2/timepoint_uwmatch_adults")
+
+
+
+
+
+taxa_info <- data.frame(tax_table(ps.uw_match_a))
+taxa_info <- taxa_info %>% rownames_to_column(var = "ASV")
+#then change the rowmans to their own column with header ASV
+#need rownames_to_column
+
+
+
+#now merge your taxa_info with the output of aldex.kw and filter for significant results
+sig_aldex2 <- glm.kru.harvest.data.cluster %>%
+  rownames_to_column(var = "ASV") %>%
+  filter(kw.eBH < 0.05) %>%
+  arrange(kw.eBH) %>%
+  dplyr::select(ASV, glm.eBH, kw.eBH)
+sig_aldex2 <- left_join(sig_aldex2, taxa_info)
+
+#9 taxa! 
+
+sig_aldex2$Genus
+
+# [1] "Pseudomonas_E_647464"             "Achromobacter"                   
+# [3] "Family_Pseudomonadaceae"          "Pandoraea"                       
+# [5] "Pseudomonas_E_650326"             "Agrobacterium"                   
+# [7] "Acinetobacter"                    "Family_Burkholderiaceae_A_592522"
+# [9] "Pedobacter_887417"   
+
+
+sig_aldex2$ASV
+
+#need a function that would make a boxplot of relabund of each timepoint to see what'd driving differences 
+
+#but first just do the first one 
+#fdee1b26073e211295a52f694af38bbd
+
+#needs a clear x of timepont and y of relative abundance 
+
+#relabund teh ps object 
+ps.uw_match_a_r <- transform_sample_counts(ps.uw_match_a, function(x) x/sum(x))
+
+ps.new <- prune_taxa(rownames(tax_table(ps.uw_match_a_r)) == "fdee1b26073e211295a52f694af38bbd", ps.uw_match_a_r)
+sample_sums(ps.new) 
+
+melted<- psmelt(ps.new)
+
+
+plot <- melted %>%
+  ggplot+
+  geom_boxplot() +#outlier.shape = NA) +
+  aes(x=timepoint, y=Abundance, fill=timepoint) +
+  scale_fill_manual(values = met.brewer("Hokusai3", 6)) + 
+  #coord_cartesian(ylim=c(0,1)) + # adjust y-axis
+  xlab("timepoint") +
+  ylab("Relative Abundance")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("Relabund ASV fdee1b26073e211295a52f694af38bbd by timepoint ")
+
+plot
+
+
+
+
+
+
+
+```
+
+
+
+
+# Plot Relative Abundance - UW match adults by timepoint 
+
+Expect 6 plots, look for taxa that are lost over time
+
+```{r}
+
+
+
+ps.uw_match_a_r <- transform_sample_counts(ps.uw_match_a, function(x) x/sum(x))
+melted_UWM_a_r<- psmelt(ps.uw_match_a_r)
+
+####
+
+TargetASV = as.list(sig_aldex2$ASV)
+
+# We use the %in% function to select only taxa that are found in the TargetGenera
+selected = melted_UWM_a_r %>%
+  filter(OTU %in% TargetASV)
+
+
+tax.names<-unique(selected$OTU)
+
+
+
+
+
+#start empty list for plots 
+aldex_plots_uwm_adults_time<- list()
+
+# Loop through each taxon
+for(i in (1:length(tax.names))) {
+  
+  ASV <- (sig_aldex2$ASV)[i]
+  
+  Genus <- (sig_aldex2$Genus)[i]
+  
+  # Prune to the specific taxon 
+  taxon_data <- filter(selected, OTU == ASV)
+  
+  # Generate the plot
+  plot_obj <- taxon_data %>%
+    ggplot+
+    geom_boxplot(outlier.shape = NA) +
+    aes(x=timepoint, y=Abundance, fill=timepoint, ) +
+    scale_fill_manual(values = c("#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF", "#FFFFFF"))+ #white fill to see points better
+    #coord_cartesian(ylim=c(0,1)) + # adjust y-axis
+
+    ylab("Relative Abundance")  +
+    theme_pubr() +
+    theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+    geom_jitter(width = 0.2, size=1.5, 
+                aes(color = timepoint)) +
+   # scale_color_manual(values = c("#B22222", "#228B22", "#1E3A8A","#6A0DAD" ))+
+    theme(legend.position="none", 
+          axis.title.x=element_blank())+ 
+    ggtitle(Genus, subtitle = ASV) + 
+    theme(plot.title=element_text(hjust=0.5, face = "bold"), 
+          plot.subtitle=element_text(hjust=0.5))
+
+  # Save the plot to the list
+  aldex_plots_uwm_adults_time[[i]] <- plot_obj
+}
+
+
+
+do.call(plot_grid, c(aldex_plots_uwm_adults_time, ncol = 3))
+
+ggsave("./aldex2/uw_match_adults_time.pdf", height = 12, width=12, device="pdf")
+
+# None really decrease over time- Pseudomonas is highest at 0h and d10, but also present at other tiems?
+
+
+```
+
+
+
+
+
+# LSTM-match adults - timepoint  
+
+
+```{r lstmmatchtimepoint}
+
+#first filter to just UW-match adults 
+
+ps.LSTM_match_a <- subset_samples(ps.filled, uni_tx == "LSTM-match" & sample_type == "adult")
+ps.LSTM_match_a <- prune_taxa(taxa_sums(ps.LSTM_match_a) > 0, ps.LSTM_match_a) 
+#1328 taxa and 124 samples
+
+sample_data(ps.LSTM_match_a)$timepoint <-as.factor(sample_data(ps.LSTM_match_a)$timepoint) #make uni_tx a factor
+
+
+
+
+#this runs quickly
+aldex.clr.LSTMmatch_tp<-aldex.clr((as.data.frame(otu_table(ps.LSTM_match_a))),
+                             sample_data(ps.LSTM_match_a)$timepoint,
+                             mc.samples=128,
+                             denom="all",
+                             verbose=TRUE,
+                             useMC=FALSE)
+#recommedned that DMC (128) * number of samples in smallest group be at least 1000
+#quick math - need to have at least 7.8 samples in the smallest group to do this test 
+table(sample_data(ps.LSTM_match_a)$timepoint)
+
+
+
+glm.kru.lstmmatch_tp<-aldex.kw(aldex.clr.LSTMmatch_tp) #takes a while
+saveRDS(glm.kru.lstmmatch_tp, "aldex2/timepoint_LSTMmatch_adults")
+
+glm.kru.lstmmatch_tp = readRDS("./aldex2/timepoint_LSTMmatch_adults")
+
+
+#grab tax info from the same phyloseq object
+taxa_info <- data.frame(tax_table(ps.LSTM_match_a))
+taxa_info <- taxa_info %>% rownames_to_column(var = "ASV")
+#then change the rowmans to their own column with header ASV
+#need rownames_to_column
+
+
+
+#now merge your taxa_info with the output of aldex.kw and filter for significant results
+sig_aldex2 <- glm.kru.lstmmatch_tp %>%
+  rownames_to_column(var = "ASV") %>%
+  filter(kw.eBH < 0.05) %>%
+  arrange(kw.eBH) 
+
+sig_aldex2 <- left_join(sig_aldex2, taxa_info)
+#14 ASVs differnt by timepoint in the LSTM tx
+
+
+```
+
+
+# Plots LSTM-match ASVs - timepoint
+
+#try as a function this time!
+
+```{r}
+
+
+make_asv_boxplots <- function(
+  melted_df,
+  target_asvs,
+  asv_metadata_df,
+  x_var
+) {
+  
+  # Ensure symbols work inside ggplot/dplyr
+  x_var <- rlang::ensym(x_var)
+  
+  # Filter to ASVs of interest
+  selected <- melted_df %>%
+    dplyr::filter(OTU %in% target_asvs)
+  
+  # Initialize list
+  plot_list <- list()
+  
+  # Loop through ASVs
+  for (i in seq_along(target_asvs)) {
+    
+    ASV <- target_asvs[i]
+    
+    Genus <- asv_metadata_df %>%
+      dplyr::filter(ASV == !!ASV) %>%
+      dplyr::pull(Genus)
+    
+    taxon_data <- selected %>%
+      dplyr::filter(OTU == ASV)
+    
+    p <- ggplot(taxon_data, aes(x = !!x_var, y = Abundance)) +
+      geom_boxplot(outlier.shape = NA, fill = "white") +
+      geom_jitter(
+        aes(color = !!x_var),
+        width = 0.2,
+        size = 1.5
+      ) +
+      ylab("Relative Abundance") +
+      theme_pubr() +
+      theme(
+        axis.text.x = element_text(angle = 45, vjust = 0.5),
+        legend.position = "none",
+        axis.title.x = element_blank(),
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5)
+      ) +
+      ggtitle(Genus, subtitle = ASV)
+    
+    plot_list[[ASV]] <- p
+  }
+  
+  return(plot_list)
+}
+
+
+#prep a phyloseq object for plotting
+ps.lsmt_match_a_r <- transform_sample_counts(ps.LSTM_match_a, function(x) x/sum(x))
+melted_LSTMM_a_r<- psmelt(ps.lsmt_match_a_r)
+
+####
+
+
+#call the function 
+plots_lstmM_adults_time <- make_asv_boxplots(
+  melted_df        = melted_LSTMM_a_r,
+  target_asvs      = sig_aldex2$ASV,
+  asv_metadata_df  = sig_aldex2,
+  x_var            = timepoint
+)
+
+do.call(plot_grid, c(plots_lstmM_adults_time, list(ncol = 5))) #plot it
+
+
+ggsave("./aldex2/lstm_match_adults_time.pdf", height = 18, width=18, device="pdf")
+
+
+# more common at early timepoints - 
+#Vibrio (common!)****
+#Pseudoatlteromonas 
+#Neisseria (really low abundance )
+# corynebacterium (skin microbe? contam?) 
+#Leucobacter
+#Sphingobacterium ****
+#Comamonas - though tht one rebounds at later timepoints 
+
+
+
+```
+
+
+
+
+
+# Fig 5 - same stock_origin, different mosquito host  - LSTM homogenate
+
+(Fig 5)
+
+Test LSTM-match vs UW-mismatch, this should get at the different community members that dominate when the same homogenate goes into two different hosts
+
+Question -- should i subset this to just d16,d30, and mo6? Yes, it will allow to compare apples to apples since they have both a a match and mismatch treatment 
+
+
+
+Significant ASVs - Seven ASVs that all seem to be more common in UW-mismatch, nothing that's associated with LSTM-match. 
+Interpretation of figures:
+
+* Dispersion (x-axis) describes the differences within groups - larger values are more variable within a group. 
+* Difference (y-axis) describes the effect size. Larger values are more likely to be truly biologically significant. 
+
+
+
+
+## Fig 5 - Adults that got UW homogenate
+
+10 ASVs jump out, 2 are more common in LSTM-mismatch (Elizabethkingia and an uncl. Burkholderiaceae). 
+Note that this is subset to just d16, d30, and mo6 timepoints because we know that timepoint has some effect on microbial community. 
+
+
+
+
+```{r volcano}
+
+# #subset to d16, d30, mo6
+# #subset to just adults with stock_origin = UW
+#
+#
+ps.gotUW<- subset_samples(ps.filled, uni_tx == "UW-match" | uni_tx == "LSTM-mismatch" & sample_type == "adult")
+#253 samples
+ps.gotUW <- subset_samples(ps.gotUW, timepoint == "d16" | timepoint == "d30" | timepoint == "mo6")
+
+ps.gotUW <- prune_taxa(taxa_sums(ps.gotUW) > 0, ps.gotUW)
+#12/14/25 - 1612 taxa and 162 samples 
+
+sample_data(ps.gotUW)$uni_tx <-as.factor(sample_data(ps.gotUW)$uni_tx) #make uni_tx a factor
+
+unique(sample_data(ps.gotUW)$timepoint)
+
+
+
+
+#this runs quickly
+aldex.clr.gotUW<-aldex.clr((as.data.frame(otu_table(ps.gotUW))),
+                             sample_data(ps.gotUW)$uni_tx,
+                             mc.samples=128,
+                             denom="all",
+                             verbose=TRUE,
+                             useMC=FALSE)
+#recommedned that DMC (128) * number of samples in smallest group be at least 1000
+#quick math - need to have at least 7.8 samples in the smallest group to do this test
+table(sample_data(ps.gotUW)$uni)
+#79 LSTM, 83 UW
+
+library(ggrepel)
+
+
+ttest<-aldex.ttest(aldex.clr.gotUW, paired.test = FALSE, hist.plot = FALSE, verbose = FALSE)
+effect <- aldex.effect(aldex.clr.gotUW, CI=T, verbose=FALSE)
+
+aldex.df <- data.frame(ttest,effect) #make new df from two metrics (ttest and effect size)
+
+par(mfrow=c(1,2))
+aldex.plot(aldex.df, type="MA", test="welch")
+aldex.plot(aldex.df, type="MW", test="welch")
+
+
+#if ttest and effect size both significant, put "both" in a new column
+aldex.df$one_or_two<-"one"
+aldex.df$one_or_two[which(aldex.df$we.eBH < 0.05 & aldex.df$wi.eBH < 0.05)] <-"both"
+
+
+#get taxa info from original phyloseq object
+taxa_info <- data.frame(tax_table(ps.gotUW))
+taxa_info <- taxa_info %>% rownames_to_column(var = "ASV")
+
+
+aldex.df<-aldex.df %>% rownames_to_column(var = "ASV")
+
+aldex.df <- left_join(aldex.df, taxa_info) #add data info to aldexdf
+
+sig_aldex2 <- aldex.df %>% filter(one_or_two=="both")#(not saved, just for looking - filter for just significant ASVs
+#9 come up!
+
+
+#figure out which families/classes are represented, and dots color by those 
+
+table(sig_aldex2$Class) #8 gammas and 1 bacteroidia
+table(sig_aldex2$Order)
+table(sig_aldex2$Family)
+table(sig_aldex2$Genus) 
+#use family 
+
+
+aldex.df.edit_UW <- aldex.df %>% mutate(pointlabel= if_else(one_or_two == "both",  Genus,"")) %>%
+                               mutate(size= if_else(one_or_two == "both",  3,2)) %>%
+                               mutate(color = if_else(one_or_two == "both" & effect > 0,  "red",
+                                                      if_else(one_or_two == "both" & effect < 0,  "yellow","grey"))) %>%
+                        mutate(famcolor = ifelse(one_or_two == "both", 
+                        case_when(
+                          Family == "Burkholderiaceae_A_580492" ~ "#B34657",
+                          Family == "Burkholderiaceae_A_592522" ~ "#B34657",
+                          Family == "Burkholderiaceae_A_595422" ~ "#B34657",
+                          Family == "Moraxellaceae" ~ "#87C080",
+                          Family == "Pseudomonadaceae" ~ "#45884E",
+                          Family == "Weeksellaceae" ~ "#588FBF",
+                          Family == "Xanthomonadaceae_616009" ~ "#E1E04B",
+                          TRUE ~ "black"
+                        ), 
+                        "grey"))
+
+
+
+volcano_gotUW <-ggplot(aldex.df.edit_UW, aes(x=diff.win,y=diff.btw)) +
+  xlab("Log2 Dispersion")+ ylab("Log2 Difference")+
+  geom_text_repel(aes(label = pointlabel), max.overlaps = 10000) +
+geom_point(aes(size= size, color= famcolor))+
+  scale_color_identity()+
+  scale_size_identity()+
+  theme_cowplot() +  theme(
+  text=element_text(size=18),
+  legend.title = element_text(size=18),
+  legend.text = element_text(size=18),
+  legend.margin = margin(6, 6, 6, 6),legend.box.background = element_rect(color="grey70",size=0.1),
+  panel.grid.major = element_line(colour = "grey70", size = 0.1), panel.grid.minor = element_blank()) +  guides(size = "none") + geom_abline(slope=1, intercept=0, linetype="dashed") + geom_abline(slope=-1, intercept=0, linetype="dashed")+
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 6), limits = c(-10,13))
+volcano_gotUW
+
+#ggsave("./aldex2/volcano_got_UW.pdf", height = 5, width=5, device="pdf")
+
+
+
+```
+
+
+
+
+## Fig 5 - Adults that got LSTM homogenate  
+
+Remember, this is just the d16, d30, and mo6 treatments
+
+```{r gotLSTM_aldex2}
+
+#subset to d16, d30, mo6
+#subset to just adults with stock_origin = LSTM
+
+
+ps.gotLSTM<- subset_samples(ps.filled, uni_tx == "LSTM-match" | uni_tx == "UW-mismatch" & sample_type == "adult")
+#220 samples
+ps.gotLSTM <- subset_samples(ps.gotLSTM, timepoint == "d16" | timepoint == "d30" | timepoint == "mo6")
+
+ps.gotLSTM <- prune_taxa(taxa_sums(ps.gotLSTM) > 0, ps.gotLSTM) 
+# 1347 taxa and 144 samples 
+
+sample_data(ps.gotLSTM)$uni_tx <-as.factor(sample_data(ps.gotLSTM)$uni_tx) #make uni_tx a factor
+
+
+#this runs quickly
+aldex.clr.gotLSTM<-aldex.clr((as.data.frame(otu_table(ps.gotLSTM))),
+                             sample_data(ps.gotLSTM)$uni_tx,
+                             mc.samples=128,
+                             denom="all",
+                             verbose=TRUE,
+                             useMC=FALSE)
+
+
+
+
+
+ttest<-aldex.ttest(aldex.clr.gotLSTM, paired.test = FALSE, hist.plot = FALSE, verbose = FALSE)
+effect <- aldex.effect(aldex.clr.gotLSTM, CI=T, verbose=FALSE)
+
+aldex.df <- data.frame(ttest,effect) #make new df from two metrics (ttest and effect size)
+
+par(mfrow=c(1,2))
+aldex.plot(aldex.df, type="MA", test="welch")
+aldex.plot(aldex.df, type="MW", test="welch")
+
+
+#if ttest adn effect size both significant, put "both" in a new column
+aldex.df$one_or_two<-"one"
+aldex.df$one_or_two[which(aldex.df$we.eBH < 0.05 & aldex.df$wi.eBH < 0.05)] <-"both"
+
+
+#get taxa info from original phyloseq object
+taxa_info <- data.frame(tax_table(ps.gotLSTM))
+taxa_info <- taxa_info %>% rownames_to_column(var = "ASV")
+
+
+aldex.df<-aldex.df %>% rownames_to_column(var = "ASV")
+
+aldex.df <- left_join(aldex.df, taxa_info) #add data info to aldexdf
+
+aldex.df %>% filter(one_or_two=="both")#filter for just significant ASVs
+#8 come up!
+
+
+aldex.df.edit_gotLSTM <- aldex.df %>% mutate(pointlabel= if_else(one_or_two == "both",  Genus,"")) %>%
+                               mutate(size= if_else(one_or_two == "both",  3,2)) %>%
+                               mutate(color = if_else(one_or_two == "both" & effect > 0,  "red",
+                                                      if_else(one_or_two == "both" & effect < 0,  "yellow","grey"))) %>%
+                        mutate(famcolor = ifelse(one_or_two == "both", 
+                        case_when(
+                          Family == "Burkholderiaceae_A_580492" ~ "#B34657",
+                          Family == "Burkholderiaceae_A_592522" ~ "#B34657",
+                          Family == "Burkholderiaceae_A_595422" ~ "#B34657",
+                          Family == "Moraxellaceae" ~ "#87C080",
+                          Family == "Pseudomonadaceae" ~ "#45884E",
+                          Family == "Weeksellaceae" ~ "#588FBF",
+                          Family == "Xanthomonadaceae_616009" ~ "#E1E04B",
+                          TRUE ~ "black"
+                        ), 
+                        "grey"))
+
+
+
+#edit
+
+
+volcano_gotLSTM <-ggplot(aldex.df.edit_gotLSTM, aes(x=diff.win,y=diff.btw)) +
+  xlab("Log2 Dispersion")+ ylab("Log2 Difference")+
+  geom_text_repel(aes(label = pointlabel), max.overlaps = 10000) +
+geom_point(aes(size= size, color= famcolor))+
+  scale_color_identity()+
+  scale_size_identity()+
+  theme_cowplot() +  theme(
+  text=element_text(size=18),
+  legend.title = element_text(size=18),
+  legend.text = element_text(size=18),
+  legend.margin = margin(6, 6, 6, 6),legend.box.background = element_rect(color="grey70",size=0.1),
+  panel.grid.major = element_line(colour = "grey70", size = 0.1), panel.grid.minor = element_blank()) +  guides(size = "none") + geom_abline(slope=1, intercept=0, linetype="dashed") + geom_abline(slope=-1, intercept=0, linetype="dashed")+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 6), limits = c(-10,13))
+
+
+
+
+ggarrange(volcano_gotUW, volcano_gotLSTM)
+
+#ggsave("./plots/volcano_swap_effect.pdf", height=4.5, width=8.5, device="pdf") 
+
+
+
+```
+
+
+
+
+
+
+# Are those ASVS in UW moz the same? 
+
+```{r venn}
+
+###########12/14
+#do the 8 ASVS from got LSTM overlaps with the 9 from gotUW? 
+intersect((aldex.df.edit_gotLSTM %>% filter(one_or_two=="both"))$ASV, sig_aldex2$ASV)
+intersect(sig_aldex2$ASV,(aldex.df.edit_gotLSTM %>% filter(one_or_two=="both"))$ASV)
+#Nope! No overlap. Even though it's the same genera, they're different ASVs. Cool!
+```
+
+
+# How common are those ASVs in those moz? 
+
+
+```{r}
+
+
+ASVs_gotLSTM <- aldex.df.edit_gotLSTM %>% filter(one_or_two=="both") %>% .$ASV #8 taxa
+ASVs_got_UW <- aldex.df.edit_UW %>% filter(one_or_two=="both") %>% .$ASV #9 taxa
+sig_fig5 <- c(ASVs_gotLSTM,ASVs_got_UW)
+
+#Awsome! now make a quick relabund 
+
+ps.relabund
+ps.fig5 <- prune_taxa(sig_fig5, ps.relabund) %>% subset_samples(uni == "UW" & sample_type == "adult")
+
+#now plot! 
+
+
+melt_fig5 <- psmelt(ps.fig5)
+
+
+
+StackedBarPlot <- melt_fig5 %>%
+   ggplot(aes(x =sample_id, y = Abundance, fill = Genus)) +
+   geom_bar(stat = "identity") +
+  labs(x = "",y = "Relative Abundance",title = "Fig5 Sig ASVs Relative Abundance")+ 
+   facet_wrap(~interaction(sample_type,uni_tx), scales = "free_x", nrow = 2) +
+  theme_cowplot() + 
+  theme(text = element_text(size=20), axis.text.x=element_blank()) +
+   theme(strip.text.x = element_text(size = 8))
+StackedBarPlot
+
+#These taxa make up a large portion of adults reads - usually > 75% in UW-mismatch, and often > 50% in UW-match. 
+
+```
+
+
+
+
+
+# LSTM larvae vs LSTM water 
+not separating out match + mismatch
+
+No significant ASVs
+
+
+```{r}
+
+ps.lw_LSTM<- subset_samples(ps.filled, sample_type == "larvae" | sample_type == "water" & uni == "LSTM")
+ps.lw_LSTM <- prune_taxa(taxa_sums(ps.lw_LSTM) > 0, ps.lw_LSTM) 
+# 751 taxa and 92 samples 
+
+sample_data(ps.lw_LSTM)$sample_type <-as.factor(sample_data(ps.lw_LSTM)$sample_type) #make uni_tx a factor
+
+
+#this runs quickly
+aldex.clr.larvWater_LSTM <- aldex.clr((as.data.frame(otu_table(ps.lw_LSTM))),
+                             sample_data(ps.lw_LSTM)$sample_type,
+                             mc.samples=128,
+                             denom="all",
+                             verbose=TRUE,
+                             useMC=FALSE)
+#recommedned that DMC (128) * number of samples in smallest group be at least 1000
+#quick math - need to have at least 7.8 samples in the smallest group to do this test 
+
+
+#now merge your taxa_info with the output of aldex.kw and filter for significant results
+# sig_aldex2 <- glm.kru.larvWater_LSTM %>%
+#   rownames_to_column(var = "ASV") %>%
+#   filter(kw.eBH < 0.05) %>%
+#   arrange(kw.eBH) %>%
+#   dplyr::select(ASV, glm.eBH, kw.eBH)
+# sig_aldex2 <- left_join(sig_aldex2, taxa_info)
+
+
+#try this by t-test and effect size instead since it's just 2 conditions 
+ttest<-aldex.ttest(aldex.clr.larvWater_LSTM, paired.test = FALSE, hist.plot = FALSE, verbose = FALSE)
+effect <- aldex.effect(aldex.clr.larvWater_LSTM, CI=T, verbose=FALSE)
+
+
+aldex.df_larvWater_LSTM <- data.frame(ttest,effect) 
+
+
+#if ttest and effect size both significant, put "both" in a new column
+aldex.df_larvWater_LSTM$one_or_two<-"one"
+aldex.df_larvWater_LSTM$one_or_two[which(aldex.df_larvWater_LSTM$we.eBH < 0.05 & aldex.df_larvWater_LSTM$wi.eBH < 0.05)] <-"both"
+
+
+#get taxa info from original phyloseq object
+taxa_info <- data.frame(tax_table(ps.lw_LSTM))
+taxa_info <- taxa_info %>% rownames_to_column(var = "ASV")
+
+
+aldex.df_larvWater_LSTM<-aldex.df_larvWater_LSTM %>% rownames_to_column(var = "ASV")
+
+aldex.df_larvWater_LSTM <- left_join(aldex.df_larvWater_LSTM, taxa_info) #add data info to aldexdf
+
+aldex.df_larvWater_LSTM %>% filter(one_or_two=="both")
+#Zero significant ASVs. 
+
+```
+
+
+
+
+# UW larvae vs water 
+
+Actually 12 ASVs! All more common in water 
+This is bulk including both UW-match and UW-mismatch.... 
+
+```{r}
+
+ps.lw_UW<- subset_samples(ps.filled, sample_type == "larvae" | sample_type == "water" & uni == "UW")
+ps.lw_UW <- prune_taxa(taxa_sums(ps.lw_UW) > 0, ps.lw_UW) 
+# 390 taxa and 92 samples 
+
+sample_data(ps.lw_UW)$sample_type <-as.factor(sample_data(ps.lw_UW)$sample_type) #make uni_tx a factor
+
+
+
+#this runs quickly
+aldex.clr.larvWater_UW <- aldex.clr((as.data.frame(otu_table(ps.lw_UW))),
+                             sample_data(ps.lw_UW)$sample_type,
+                             mc.samples=128,
+                             denom="all",
+                             verbose=TRUE,
+                             useMC=FALSE)
+#recommedned that DMC (128) * number of samples in smallest group be at least 1000
+#quick math - need to have at least 7.8 samples in the smallest group to do this test 
+
+
+
+#since it's just two conditions,  use ttest and effect module 
+ttest<-aldex.ttest(aldex.clr.larvWater_UW, paired.test = FALSE, hist.plot = FALSE, verbose = FALSE)
+effect <- aldex.effect(aldex.clr.larvWater_UW, CI=T, verbose=FALSE)
+
+aldex.df_UWmatch_WL <- data.frame(ttest,effect) #make new df from two metrics (ttest and effect size)
+
+
+#if ttest and effect size both significant, put "both" in a new column
+aldex.df_UWmatch_WL$one_or_two<-"one"
+aldex.df_UWmatch_WL$one_or_two[which(aldex.df_UWmatch_WL$we.eBH < 0.05 & aldex.df_UWmatch_WL$wi.eBH < 0.05)] <-"both"
+
+
+
+#get taxa info from original phyloseq object
+taxa_info <- data.frame(tax_table(ps.lw_UW))
+taxa_info <- taxa_info %>% rownames_to_column(var = "ASV")
+
+
+
+
+aldex.df_UWmatch_WL<-aldex.df_UWmatch_WL %>% rownames_to_column(var = "ASV")
+
+aldex.df_UWmatch_WL <- left_join(aldex.df_UWmatch_WL, taxa_info) #add data info to aldexdf
+
+aldex.df_UWmatch_WL %>% filter(one_or_two=="both")#filter for just significant ASVs, not stored 
+#11 come up!
+
+#figure out which Classes are represented, and color by those 
+#also count how many families there are 
+
+
+table(sig_aldex2$Class)
+table(sig_aldex2$Order)
+table(sig_aldex2$Family)
+#use class 
+
+
+aldex.df_UWmatch_WL_edit <- aldex.df_UWmatch_WL %>% mutate(pointlabel= if_else(one_or_two == "both",  Genus,"")) %>%
+                               mutate(size= if_else(one_or_two == "both",  3,2)) %>%
+                               mutate(color = if_else(one_or_two == "both" & effect > 0,  "red",
+                                                      if_else(one_or_two == "both" & effect < 0,  "yellow","grey"))) %>%
+                        mutate(famcolor = ifelse(one_or_two == "both", 
+                        case_when(
+                          Class == "Gammaproteobacteria" ~ "#238b45",
+                          Class == "Bacteroidia" ~ "#4292c6",
+                          Class == "Actinomycetia" ~ "#ff7f00",
+                          Class == "Alphaproteobacteria" ~ "#BBDE94",
+                          TRUE ~ "black"
+                        ), 
+                        "grey"))
+
+
+
+volcano_uwm_water_larvae <-ggplot(aldex.df_UWmatch_WL_edit, aes(x=diff.win,y=diff.btw)) +
+  xlab("Dispersion")+ ylab("Difference")+
+  geom_text_repel(aes(label = pointlabel), max.overlaps = 10000) +
+ geom_point(aes(size= size, color= famcolor))+
+  scale_color_identity()+
+  scale_size_identity()+
+  theme_cowplot() +  theme(
+  text=element_text(size=18),
+  legend.title = element_text(size=18),
+  legend.text = element_text(size=18),
+  #legend.margin = margin(6, 6, 6, 6),legend.box.background = element_rect(color="grey70",size=0.1),
+  panel.grid.major = element_line(colour = "grey70", size = 0.1), panel.grid.minor = element_blank()) +  guides(size = "none") + geom_abline(slope=1, intercept=-4, linetype="dashed") + geom_abline(slope=-1, intercept=4, linetype="dashed")+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 6), limits = c(-10,13)) + 
+  ggtitle("Differential abundance of ASVs in \n UW water (top) vs larvae (bottom) samples")
+
+volcano_uwm_water_larvae
+
+#huh, all more common in water than in larvae. Nothing that's strongly larvae-associated. 
+
+#ggsave("./plots/volcano_swap_effect_UW_water_v_larvae.pdf", height=6, width=6, device="pdf") 
+
+
+```
+
+
+
+#UW-match larvae vs water 
+
+
+```{r}
+
+
+ps.lw_UW_match<- subset_samples(ps.filled, sample_type == "larvae" | sample_type == "water") %>% subset_samples(uni_tx == "UW-match")
+ps.lw_UW_match <- prune_taxa(taxa_sums(ps.lw_UW_match) > 0, ps.lw_UW_match) 
+# 64 taxa and 36 samples 
+
+sample_data(ps.lw_UW_match)$sample_type <-as.factor(sample_data(ps.lw_UW_match)$sample_type) #make uni_tx a factor
+
+
+
+#this runs quickly
+aldex.clr.larvWater_UW_match <- aldex.clr((as.data.frame(otu_table(ps.lw_UW_match))),
+                             sample_data(ps.lw_UW_match)$sample_type,
+                             mc.samples=128,
+                             denom="all",
+                             verbose=TRUE,
+                             useMC=FALSE)
+#recommedned that DMC (128) * number of samples in smallest group be at least 1000
+#quick math - need to have at least 7.8 samples in the smallest group to do this test 
+
+
+#grab tax info from the same phyloseq object
+taxa_info <- data.frame(tax_table(ps.lw_UW_match))
+taxa_info <- taxa_info %>% rownames_to_column(var = "ASV")
+#then change the rowmans to their own column with header ASV
+#need rownames_to_column
+
+
+
+#since it's just two conditions, might be more appropriate to use ttest and effect module 
+ttest<-aldex.ttest(aldex.clr.larvWater_UW_match, paired.test = FALSE, hist.plot = FALSE, verbose = FALSE)
+effect <- aldex.effect(aldex.clr.larvWater_UW_match, CI=T, verbose=FALSE)
+
+aldex.df_UWmatch_WL <- data.frame(ttest,effect) #make new df from two metrics (ttest and effect size)
+
+
+#if ttest and effect size both significant, put "both" in a new column
+aldex.df_UWmatch_WL$one_or_two<-"one"
+aldex.df_UWmatch_WL$one_or_two[which(aldex.df_UWmatch_WL$we.eBH < 0.05 & aldex.df_UWmatch_WL$wi.eBH < 0.05)] <-"both"
+
+
+#now merge your taxa_info with the output of aldex.kw and filter for significant results
+sig_aldex2 <- aldex.df_UWmatch_WL %>%
+  rownames_to_column(var = "ASV") %>%
+  filter(one_or_two == "both") %>%
+  arrange(we.eBH) %>%
+  dplyr::select(ASV, we.eBH, wi.eBH)
+sig_aldex2 <- left_join(sig_aldex2, taxa_info)
+#3 taxa 
+
+
+# 
+# #get taxa info from original phyloseq object
+# taxa_info <- data.frame(tax_table(ps.lw_UW_match))
+# taxa_info <- taxa_info %>% rownames_to_column(var = "ASV")
+
+
+
+
+aldex.df_UWmatch_WL<-aldex.df_UWmatch_WL %>% rownames_to_column(var = "ASV")
+
+aldex.df_UWmatch_WL <- left_join(aldex.df_UWmatch_WL, taxa_info) #add data info to aldexdf
+
+aldex.df_UWmatch_WL %>% filter(one_or_two=="both")#filter for just significant ASVs, not stored
+#12 come up!
+
+
+
+table(sig_aldex2$Class)
+table(sig_aldex2$Order)
+table(sig_aldex2$Family)
+#use class 
+
+aldex.df_UWmatch_WL_edit <- aldex.df_UWmatch_WL %>% mutate(pointlabel= if_else(one_or_two == "both",  Genus,"")) %>%
+                               mutate(size= if_else(one_or_two == "both",  3,2)) %>%
+                               mutate(color = if_else(one_or_two == "both" & effect > 0,  "red",
+                                                      if_else(one_or_two == "both" & effect < 0,  "yellow","grey"))) %>%
+                        mutate(famcolor = ifelse(one_or_two == "both", 
+                        case_when(
+                          Class == "Gammaproteobacteria" ~ "#238b45",
+                          Class == "Bacteroidia" ~ "#4292c6",
+                          Class == "Actinomycetia" ~ "#ff7f00",
+                          Class == "Alphaproteobacteria" ~ "#BBDE94",
+                          TRUE ~ "black"
+                        ), 
+                        "grey"))
+
+
+
+volcano_uwm_water_larvae <-ggplot(aldex.df_UWmatch_WL_edit, aes(x=diff.win,y=diff.btw)) +
+  xlab("Dispersion")+ ylab("Difference")+
+  geom_text_repel(aes(label = pointlabel), max.overlaps = 10000) +
+ geom_point(aes(size= size, color= famcolor))+
+  scale_color_identity()+
+  scale_size_identity()+
+  theme_cowplot() +  theme(
+  text=element_text(size=18),
+  legend.title = element_text(size=18),
+  legend.text = element_text(size=18),
+  #legend.margin = margin(6, 6, 6, 6),legend.box.background = element_rect(color="grey70",size=0.1),
+  panel.grid.major = element_line(colour = "grey70", size = 0.1), panel.grid.minor = element_blank()) +  guides(size = "none") + geom_abline(slope=1, intercept=0, linetype="dashed") + geom_abline(slope=-1, intercept=0, linetype="dashed")+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 6), limits = c(-10,13)) + 
+  ggtitle("Differential abundance of ASVs in \n UW-match water (top) vs larvae (bottom) samples")
+
+volcano_uwm_water_larvae
+
+#two chryseobacterium ASVs more abundant in water, Leucobacter more abundant in larvae
+
+#ggsave("./plots/volcano_swap_effect_UWmatch_water_v_larvae.pdf", height=6, width=6, device="pdf") 
+
+
+
+```
+
+
+
+
+# Plot relative abundance for  UW-match larvae vs water (one plot, using ggplot)
+
+Chryseobacrium in water, Leucobacter in larvae
+
+AF22
+
+```{r}
+
+
+ps.UWM_WL_r <- transform_sample_counts(ps.lw_UW_match, function(x) x/sum(x))
+melt_UWM_WL_r = psmelt(ps.UWM_WL_r)
+
+
+TargetASV = as.list(sig_aldex2$ASV)
+
+# We use the %in% function to select only taxa that are found in the TargetGenera
+selected = melt_UWM_WL_r %>%
+  filter(OTU %in% TargetASV)
+
+
+tax.names<-unique(selected$OTU)
+temp <- tax.names
+
+
+
+
+#start empty list for plots 
+aldex_plots_uwm_water_larvae<- list()
+
+# Loop through each taxon
+for(i in (1:length(tax.names))) {
+  
+  ASV <- (sig_aldex2$ASV)[i]
+  
+  Genus <- (sig_aldex2$Genus)[i]
+  
+  # Prune to the specific taxon 
+  taxon_data <- filter(selected, OTU == ASV)
+  
+  # Generate the plot
+  plot_obj <- taxon_data %>%
+    ggplot+
+    geom_boxplot(outlier.shape = NA) +
+    aes(x=sample_type, y=Abundance, fill=sample_type, ) +
+    scale_fill_manual(values = c("#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF"))+
+    #coord_cartesian(ylim=c(0,1)) + # adjust y-axis
+
+    ylab("Relative Abundance")  +
+    theme_pubr() +
+    theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+    geom_jitter(width = 0.2, size=1.5, 
+                aes(color = sample_type)) +
+   # scale_color_manual(values = c("#B22222", "#228B22", "#1E3A8A","#6A0DAD" ))+
+    theme(legend.position="none", 
+          axis.title.x=element_blank())+ 
+    ggtitle(Genus, subtitle = ASV) + 
+    theme(plot.title=element_text(hjust=0.5, face = "bold"), 
+          plot.subtitle=element_text(hjust=0.5))
+
+  # Save the plot to the list
+  aldex_plots_uwm_water_larvae[[i]] <- plot_obj
+}
+
+
+
+do.call(plot_grid, c(aldex_plots_uwm_water_larvae, ncol = 3))
+
+ggsave("./aldex2/uw_match_water_v_larvae/uwm_water_larvae_grid.pdf", height = 5, width=12, device="pdf")
+
+```
+
+# UW-mismatch water vs larvae
+
+
+
+```{r}
+
+
+
+ps.lw_UW_mismatch<- subset_samples(ps.filled, sample_type == "larvae" | sample_type == "water") %>% subset_samples(uni_tx == "UW-mismatch")
+ps.lw_UW_mismatch <- prune_taxa(taxa_sums(ps.lw_UW_mismatch) > 0, ps.lw_UW_mismatch) 
+# 69 taxa and 20 samples 
+
+sample_data(ps.lw_UW_mismatch)$sample_type <-as.factor(sample_data(ps.lw_UW_mismatch)$sample_type) #make uni_tx a factor
+
+
+
+#this runs quickly
+aldex.clr.larvWater_UW_mismatch <- aldex.clr((as.data.frame(otu_table(ps.lw_UW_mismatch))),
+                             sample_data(ps.lw_UW_mismatch)$sample_type,
+                             mc.samples=128,
+                             denom="all",
+                             verbose=TRUE,
+                             useMC=FALSE)
+#recommedned that DMC (128) * number of samples in smallest group be at least 1000
+#quick math - need to have at least 7.8 samples in the smallest group to do this test, just meeting it on UW-mismatch
+
+
+#grab tax info from the same phyloseq object
+taxa_info <- data.frame(tax_table(ps.lw_UW_mismatch))
+taxa_info <- taxa_info %>% rownames_to_column(var = "ASV")
+#then change the rowmans to their own column with header ASV
+#need rownames_to_column
+
+
+
+#since it's just two conditions, might be more appropriate to use ttest and effect module 
+ttest<-aldex.ttest(aldex.clr.larvWater_UW_mismatch, paired.test = FALSE, hist.plot = FALSE, verbose = FALSE)
+effect <- aldex.effect(aldex.clr.larvWater_UW_mismatch, CI=T, verbose=FALSE)
+
+aldex.df_UWmismatch_WL <- data.frame(ttest,effect) #make new df from two metrics (ttest and effect size)
+
+
+#if ttest and effect size both significant, put "both" in a new column
+aldex.df_UWmismatch_WL$one_or_two<-"one"
+aldex.df_UWmismatch_WL$one_or_two[which(aldex.df_UWmismatch_WL$we.eBH < 0.05 & aldex.df_UWmismatch_WL$wi.eBH < 0.05)] <-"both"
+
+
+#now merge your taxa_info with the output of aldex.kw and filter for significant results
+sig_aldex2 <- aldex.df_UWmismatch_WL %>%
+  rownames_to_column(var = "ASV") %>%
+  filter(one_or_two == "both") %>%
+  arrange(we.eBH) %>%
+  dplyr::select(ASV, we.eBH, wi.eBH)
+sig_aldex2 <- left_join(sig_aldex2, taxa_info)
+#2 taxa 
+
+
+
+
+aldex.df_UWmismatch_WL<-aldex.df_UWmismatch_WL %>% rownames_to_column(var = "ASV")
+aldex.df_UWmismatch_WL <- left_join(aldex.df_UWmismatch_WL, taxa_info) #add taxa info to aldexdf
+aldex.df_UWmismatch_WL %>% filter(one_or_two=="both")#filter for just significant ASVs, not stored
+
+
+
+aldex.df_UWmismatch_WL_edit <- aldex.df_UWmismatch_WL %>% mutate(pointlabel= if_else(one_or_two == "both",  Genus,"")) %>%
+                               mutate(size= if_else(one_or_two == "both",  3,2)) %>%
+                               mutate(color = if_else(one_or_two == "both" & effect > 0,  "red",
+                                                      if_else(one_or_two == "both" & effect < 0,  "yellow","grey"))) %>%
+                        mutate(famcolor = ifelse(one_or_two == "both", 
+                        case_when(
+                          Class == "Gammaproteobacteria" ~ "#238b45",
+                          Class == "Bacteroidia" ~ "#4292c6",
+                          Class == "Actinomycetia" ~ "#ff7f00",
+                          Class == "Alphaproteobacteria" ~ "#BBDE94",
+                          TRUE ~ "black"
+                        ), 
+                        "grey"))
+
+
+
+volcano_uwm_water_larvae <-ggplot(aldex.df_UWmismatch_WL_edit, aes(x=diff.win,y=diff.btw)) +
+  xlab("Dispersion")+ ylab("Difference")+
+  geom_text_repel(aes(label = pointlabel), max.overlaps = 10000) +
+ geom_point(aes(size= size, color= famcolor))+
+  scale_color_identity()+
+  scale_size_identity()+
+  theme_cowplot() +  theme(
+  text=element_text(size=18),
+  legend.title = element_text(size=18),
+  legend.text = element_text(size=18),
+  #legend.margin = margin(6, 6, 6, 6),legend.box.background = element_rect(color="grey70",size=0.1),
+  panel.grid.major = element_line(colour = "grey70", size = 0.1), panel.grid.minor = element_blank()) +  guides(size = "none") + geom_abline(slope=1, intercept=-4, linetype="dashed") + geom_abline(slope=-1, intercept=4, linetype="dashed")+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 6), limits = c(-10,13)) + 
+  ggtitle("Differential abundance of ASVs in \n UW water (top) vs larvae (bottom) samples")
+
+volcano_uwm_water_larvae
+
+#huh, all more common in water than in larvae. Nothing that's strongly larvae-associated, makes since b/c larvae are swimming in water that they contain a subeset of water taxa 
+
+#ggsave("./plots/volcano_swap_effect_UWmis_water_v_larvae.pdf", height=6, width=6, device="pdf") 
+
+```
+
+# Plot UW-mismatch water vs larvae 
+
+AF23
+
+```{r}
+
+
+ps.UWMis_WL_r <- transform_sample_counts(ps.lw_UW_mismatch, function(x) x/sum(x))
+melt_UWMis_WL_r = psmelt(ps.UWMis_WL_r)
+
+
+TargetASV = as.list(sig_aldex2$ASV)
+
+# We use the %in% function to select only taxa that are found in the TargetGenera
+selected = melt_UWMis_WL_r %>%
+  filter(OTU %in% TargetASV)
+
+
+tax.names<-unique(selected$OTU)
+temp <- tax.names
+
+
+
+
+#start empty list for plots 
+aldex_plots_uwmis_water_larvae<- list()
+
+# Loop through each taxon
+for(i in (1:length(tax.names))) {
+  
+  ASV <- (sig_aldex2$ASV)[i]
+  
+  Genus <- (sig_aldex2$Genus)[i]
+  
+  # Prune to the specific taxon 
+  taxon_data <- filter(selected, OTU == ASV)
+  
+  # Generate the plot
+  plot_obj <- taxon_data %>%
+    ggplot+
+    geom_boxplot(outlier.shape = NA) +
+    aes(x=sample_type, y=Abundance, fill=sample_type, ) +
+    scale_fill_manual(values = c("#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF"))+
+    #coord_cartesian(ylim=c(0,1)) + # adjust y-axis
+
+    ylab("Relative Abundance")  +
+    theme_pubr() +
+    theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+    geom_jitter(width = 0.2, size=1.5, 
+                aes(color = sample_type)) +
+   # scale_color_manual(values = c("#B22222", "#228B22", "#1E3A8A","#6A0DAD" ))+
+    theme(legend.position="none", 
+          axis.title.x=element_blank())+ 
+    ggtitle(Genus, subtitle = ASV) + 
+    theme(plot.title=element_text(hjust=0.5, face = "bold"), 
+          plot.subtitle=element_text(hjust=0.5))
+
+  # Save the plot to the list
+  aldex_plots_uwmis_water_larvae[[i]] <- plot_obj
+}
+
+
+
+do.call(plot_grid, c(aldex_plots_uwmis_water_larvae, ncol = 2))
+
+ggsave("./aldex2/uw_mismatch_water_v_larvae/uwmis_water_larvae_grid.pdf", height = 5, width=9, device="pdf")
+
+```
+
+
+
+# What ASVs are lost in the transition from water >> adult? 
+
+
+Does it make sense to consider larvae + water together for this one? What's in aquatic stage versus the adult stage? Yes considering how water + larvae nealry always  clustered together in rpca + phylo-rpca 
+
+
+
+
+```{r}
+
+
+head(sample_data(ps.filled))
+
+#need a new metadata variable that combines water + larvae into "aquatic" 
+
+#make a new column where you've manually renamed based on old values. keeps both columns 
+# Modify sample_data directly to add the new column
+sample_data(ps.filled)$stage <- with(sample_data(ps.filled), 
+  ifelse(sample_type == "water", "aquatic",
+  ifelse(sample_type == "larvae", "aquatic",
+  ifelse(sample_type == "adult", "adult", as.character(sample_type)))) #retain donor pool, we'll filter those out later anyway
+)
+
+
+
+ps.stage_UWmatch<- subset_samples(ps.filled, stage == "aquatic" | stage == "adult") %>%  subset_samples(uni_tx == "UW-match")
+ps.stage_UWmatch <- prune_taxa(taxa_sums(ps.stage_UWmatch) > 0, ps.stage_UWmatch) 
+# 1435 taxa and 174 samples 
+
+sample_data(ps.stage_UWmatch)$stage <-as.factor(sample_data(ps.stage_UWmatch)$stage) #make uni_tx a factor
+
+
+#this runs quickly
+aldex.clr.stage_UWmatch<- aldex.clr((as.data.frame(otu_table(ps.stage_UWmatch))),
+                             sample_data(ps.stage_UWmatch)$stage,
+                             mc.samples=128,
+                             denom="all",
+                             verbose=TRUE,
+                             useMC=FALSE)
+#recommedned that DMC (128) * number of samples in smallest group be at least 1000
+#quick math - need to have at least 7.8 samples in the smallest group to do this test 
+
+
+
+
+#grab tax info from the same phyloseq object
+taxa_info <- data.frame(tax_table(ps.stage_UWmatch))
+taxa_info <- taxa_info %>% rownames_to_column(var = "ASV")
+#then change the rowmans to their own column with header ASV
+#need rownames_to_column
+
+
+
+
+
+ttest<-aldex.ttest(aldex.clr.stage_UWmatch, paired.test = FALSE, hist.plot = FALSE, verbose = FALSE)
+effect <- aldex.effect(aldex.clr.stage_UWmatch, CI=T, verbose=FALSE)
+
+aldex.df_UWmatch_stage <- data.frame(ttest,effect) #make new df from two metrics (ttest and effect size)
+
+
+
+
+
+#if ttest adn effect size both significant, put "both" in a new column
+aldex.df_UWmatch_stage$one_or_two<-"one"
+aldex.df_UWmatch_stage$one_or_two[which(aldex.df_UWmatch_stage$we.eBH < 0.05 & aldex.df_UWmatch_stage$wi.eBH < 0.05)] <-"both"
+
+
+#now merge your taxa_info with the output of aldex.kw and filter for significant results
+sig_aldex2 <- aldex.df_UWmatch_stage %>%
+  rownames_to_column(var = "ASV") %>%
+  filter(one_or_two == "both") %>%
+  arrange(we.eBH) %>%
+  dplyr::select(ASV, we.eBH, wi.eBH)
+sig_aldex2 <- left_join(sig_aldex2, taxa_info)
+#12 taxa 
+
+
+
+aldex.df_UWmatch_stage<-aldex.df_UWmatch_stage %>% rownames_to_column(var = "ASV")
+
+aldex.df_UWmatch_stage <- left_join(aldex.df_UWmatch_stage, taxa_info) #add data info to aldexdf
+
+aldex.df_UWmatch_stage %>% filter(one_or_two=="both")#filter for just significant ASVs, not stored 
+#12 via effect size and t-test,
+
+
+#add info for plotting
+aldex.df_UWmatch_stage_edit <- aldex.df_UWmatch_stage %>% mutate(pointlabel= if_else(one_or_two == "both",  Genus,"")) %>%
+                               mutate(size= if_else(one_or_two == "both",  3,2)) %>%
+                               mutate(color = if_else(one_or_two == "both" & effect > 0,  "red",
+                                                      if_else(one_or_two == "both" & effect < 0,  "yellow","grey"))) %>%
+                        mutate(famcolor = ifelse(one_or_two == "both", 
+                        case_when(
+                          Class == "Gammaproteobacteria" ~ "#238b45",
+                          Class == "Bacteroidia" ~ "#4292c6",
+                          Class == "Actinomycetia" ~ "#ff7f00",
+                          Class == "Alphaproteobacteria" ~ "#BBDE94",
+                          TRUE ~ "black"
+                        ), 
+                        "grey"))
+
+
+
+
+volcano_uwm_stage <-ggplot(aldex.df_UWmatch_stage_edit, aes(x=diff.win,y=diff.btw)) +
+  xlab("Dispersion")+ ylab("Difference")+
+  geom_text_repel(aes(label = pointlabel), max.overlaps = 10000) +
+ geom_point(aes(size= size, color= famcolor))+
+  scale_color_identity()+
+  scale_size_identity()+
+  theme_cowplot() +  theme(
+  text=element_text(size=18),
+  legend.title = element_text(size=18),
+  legend.text = element_text(size=18),
+  legend.margin = margin(6, 6, 6, 6),legend.box.background = element_rect(color="grey70",size=0.1),
+  panel.grid.major = element_line(colour = "grey70", size = 0.1), panel.grid.minor = element_blank()) +  guides(size = "none") + geom_abline(slope=1, intercept=0, linetype="dashed") + geom_abline(slope=-1, intercept=0, linetype="dashed")+
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 6), limits = c(-10,13)) + 
+  ggtitle("Differential abundance of ASVs in \n UW-match aquatic(top) and adult (bottom) samples")
+
+
+ggsave("./aldex2/volcano_UWmatch_aquatic_v_adult.pdf", height=6, width=6, device="pdf") 
+
+
+
+```
+
+
+# Plot UW-match stage significant taxa 
+
+AF19
+
+```{r}
+
+ps.UWM_stage_r <- transform_sample_counts(ps.stage_UWmatch, function(x) x/sum(x))
+melt_UWM_stage_r = psmelt(ps.UWM_stage_r)
+
+
+TargetASV = as.list(sig_aldex2$ASV)
+
+# We use the %in% function to select only taxa that are found in the TargetGenera
+selected = melt_UWM_stage_r %>%
+  filter(OTU %in% TargetASV)
+
+
+tax.names<-unique(selected$OTU)
+temp <- tax.names
+
+
+
+#start empty list for plots 
+aldex_plots_UWM_stage<- list()
+
+# Loop through each taxon
+for(i in (1:length(tax.names))) {
+  
+  ASV <- (sig_aldex2$ASV)[i]
+  
+  Genus <- (sig_aldex2$Genus)[i]
+  
+  # Prune to the specific taxon 
+  taxon_data <- filter(selected, OTU == ASV)
+  
+  # Generate the plot
+  plot_obj <- taxon_data %>%
+    ggplot+
+    geom_boxplot(outlier.shape = NA) +
+    aes(x=stage, y=Abundance, fill=stage, ) +
+    scale_fill_manual(values = c("#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF","#FFFFFF"))+
+    #coord_cartesian(ylim=c(0,1)) + # adjust y-axis
+
+    ylab("Relative Abundance")  +
+    theme_pubr() +
+    theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+    geom_jitter(width = 0.2, size=1.5, 
+                aes(color = stage)) +
+   # scale_color_manual(values = c("#B22222", "#228B22", "#1E3A8A","#6A0DAD" ))+
+    theme(legend.position="none", 
+          axis.title.x=element_blank())+ 
+    ggtitle(Genus, subtitle = ASV) + 
+    theme(plot.title=element_text(hjust=0.5, face = "bold"), 
+          plot.subtitle=element_text(hjust=0.5))
+
+  # Save the plot to the list
+  aldex_plots_UWM_stage[[i]] <- plot_obj
+}
+
+
+
+do.call(plot_grid, c(aldex_plots_UWM_stage, ncol = 4))
+
+ggsave("./aldex2/grid_UW_match_stage.pdf", height = 15, width=15, device="pdf")
+
+```
+
+
+
+
+# Try it as a function 
+
+
+```{r}
+
+
+run_aldex2_analysis <- function(ps_object, 
+                                filter_value,
+                                grouping_var = "stage",
+                                output_prefix = "aldex2_output",
+                                mc.samples = 128) {
+
+
+
+  #────────────────────────────────────────────
+  # 0. Filter phyloseq object
+  #────────────────────────────────────────────
+  
+  # filter_var must be a character name of a sample_data column
+  ps_filt <- subset_samples(ps_object, eval(parse(text = paste0("uni_tx == '", filter_value, "'"))))
+  ps_filt <- prune_taxa(taxa_sums(ps_filt) > 0, ps_filt)
+
+
+
+  sample_data(ps_filt)[[grouping_var]] <- as.factor(sample_data(ps_filt)[[grouping_var]])
+
+  #────────────────────────────────────────────
+  # 1. Run ALDEx2
+  #────────────────────────────────────────────
+  aldex_clr <- aldex.clr(
+    as.data.frame(otu_table(ps_filt)),
+    sample_data(ps_filt)[[grouping_var]],
+    mc.samples = mc.samples,
+    denom = "all",
+    verbose = TRUE,
+    useMC = FALSE
+  )
+
+  ttest <- aldex.ttest(aldex_clr)
+  effect <- aldex.effect(aldex_clr)
+
+  aldex_df <- data.frame(ttest, effect) %>%
+    rownames_to_column("ASV")
+
+  #────────────────────────────────────────────
+  # 2. Add significance classification
+  #────────────────────────────────────────────
+  aldex_df <- aldex_df %>%
+    mutate(one_or_two = ifelse(we.eBH < 0.05 & wi.eBH < 0.05, "both", "one"))
+
+  #────────────────────────────────────────────
+  # 3. Add taxonomy data
+  #────────────────────────────────────────────
+  taxa_info <- data.frame(tax_table(ps_filt)) %>%
+    rownames_to_column("ASV")
+
+  aldex_df <- left_join(aldex_df, taxa_info, by = "ASV")
+
+  sig_df <- aldex_df %>% filter(one_or_two == "both")
+
+  message("Significant ASVs: ", nrow(sig_df))
+
+  #────────────────────────────────────────────
+  # 4. Volcano plot
+  #────────────────────────────────────────────
+  aldex_plot_df <- aldex_df %>%
+    mutate(pointlabel = if_else(one_or_two == "both", Genus, ""),
+           size = if_else(one_or_two == "both", 3, 2),
+           famcolor = case_when(
+             one_or_two != "both" ~ "grey",
+             Class == "Gammaproteobacteria" ~ "#238b45",
+             Class == "Bacteroidia" ~ "#4292c6",
+             Class == "Actinomycetia" ~ "#ff7f00",
+             Class == "Alphaproteobacteria" ~ "#BBDE94",
+             TRUE ~ "black"
+           ))
+
+  volcano_plot <- ggplot(aldex_plot_df, aes(x = diff.win, y = diff.btw)) +
+    geom_point(aes(size = size, color = famcolor)) +
+    geom_text_repel(aes(label = pointlabel), max.overlaps = Inf) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+    geom_abline(slope = -1, intercept = 0, linetype = "dashed") +
+    scale_color_identity() + scale_size_identity() +
+    theme_cowplot() +
+    labs(title = paste("ALDEx2 Volcano Plot:", filter_value),
+         x = "Dispersion (diff.win)", y = "Difference (diff.btw)")
+
+  ggsave(paste0(output_prefix, "_volcano.pdf"),
+         plot = volcano_plot, height = 6, width = 6)
+
+  #────────────────────────────────────────────
+  # 5. Create relative-abundance boxplots for sig ASVs
+  #────────────────────────────────────────────
+  ps_rel <- transform_sample_counts(ps_filt, function(x) x/sum(x))
+  melted <- psmelt(ps_rel)
+
+  selected <- melted %>% filter(OTU %in% sig_df$ASV)
+
+  plot_list <- list()
+
+  for (i in seq_len(nrow(sig_df))) {
+    asv <- sig_df$ASV[i]
+    genus <- sig_df$Genus[i]
+
+    taxon_data <- selected %>% filter(OTU == asv)
+
+    p <- ggplot(taxon_data, aes_string(x = grouping_var, y = "Abundance", color = grouping_var)) +
+      geom_boxplot(outlier.shape = NA) +
+      geom_jitter(width = 0.2, size = 1.2) +
+      theme_pubr() +
+      theme(legend.position = "none",
+            axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+      labs(title = genus, subtitle = asv, y = "Relative Abundance", x = NULL)+
+        theme(plot.title=element_text(hjust=0.5, face = "bold"), 
+          plot.subtitle=element_text(hjust=0.5))
+
+    plot_list[[i]] <- p
+  }
+
+  grid_plot <- plot_grid(plotlist = plot_list, ncol = 4)
+  ggsave(paste0(output_prefix, "_grid.pdf"), grid_plot, height = 14, width = 14)
+
+  #────────────────────────────────────────────
+  # Return outputs as a list
+  #────────────────────────────────────────────
+  return(list(
+    sig_asvs = sig_df,
+    volcano = volcano_plot,
+    grid = grid_plot
+  ))
+}
+
+#test use 
+filter_value = "UW-match"
+
+results <- run_aldex2_analysis(
+  ps_object = ps.filled,
+  filter_value = "UW-match",
+  grouping_var = "stage",
+  output_prefix = "UWmatch_stage"
+)
+
+
+
+results$grid
+
+#ggsave("./aldex2/grid_UW_match_stage_TEST.pdf", height = 15, width=15, device="pdf")
+
+
+
+
+```
+
+
+# UW mismatch aquatic vs adults 
+
+AF20
+
+```{r}
+
+filter_value = "UW-mismatch"
+
+results_uwmis_stage <- run_aldex2_analysis(
+  ps_object = ps.filled,
+  filter_value = "UW-mismatch",
+  grouping_var = "stage",
+  output_prefix = "UWmismatch_stage"
+)
+
+
+results_uwmis_stage$grid
+ggsave("./aldex2/grid_UW_mismatch_stage.pdf", height = 15, width=15, device="pdf")
+
+
+```
+
+
+# LSTM-match by stage 
+
+Not significant, no corresponding plot in manuscript
+
+```{r}
+filter_value = "LSTM-match"
+
+results_LSTMmatch_stage <- run_aldex2_analysis(
+  ps_object = ps.filled,
+  filter_value = "LSTM-match",
+  grouping_var = "stage",
+  output_prefix = "LSTM-match_stage"
+)
+
+# 0 significant ASVs
+
+
+```
+
+
+
+# LSTM-mismatch by stage 
+
+none significant no corresponding plot in manuscript
+
+```{r}
+filter_value = "LSTM-mismatch"
+
+results_LSTMmatch_stage <- run_aldex2_analysis(
+  ps_object = ps.filled,
+  filter_value = "LSTM-mismatch",
+  grouping_var = "stage",
+  output_prefix = "LSTM-mismatch_stage"
+)
+
+# also 0 significant ASVs
+
+
+```
+
+
+# LSTM-match - for water vs larvae? 
+
+Need to feed this one a pre-filtered phyloseq object with just 2 levels of desired grouping var
+
+```{r}
+
+
+
+
+run_aldex2_analysis_WL <- function(ps_object, 
+                                grouping_var = "sample_type",
+                                output_prefix = "aldex2_output",
+                                mc.samples = 128) {
+
+ 
+
+  #────────────────────────────────────────────
+  # 1. Run ALDEx2
+  #────────────────────────────────────────────
+  aldex_clr <- aldex.clr(
+    as.data.frame(otu_table(ps_object)),
+    sample_data(ps_object)[[grouping_var]],
+    mc.samples = mc.samples,
+    denom = "all",
+    verbose = TRUE,
+    useMC = FALSE
+  )
+
+  ttest <- aldex.ttest(aldex_clr)
+  effect <- aldex.effect(aldex_clr)
+
+  aldex_df <- data.frame(ttest, effect) %>%
+    rownames_to_column("ASV")
+
+  #────────────────────────────────────────────
+  # 2. Add significance classification
+  #────────────────────────────────────────────
+  aldex_df <- aldex_df %>%
+    mutate(one_or_two = ifelse(we.eBH < 0.05 & wi.eBH < 0.05, "both", "one"))
+
+  #────────────────────────────────────────────
+  # 3. Add taxonomy data
+  #────────────────────────────────────────────
+  taxa_info <- data.frame(tax_table(ps_object)) %>%
+    rownames_to_column("ASV")
+
+  aldex_df <- left_join(aldex_df, taxa_info, by = "ASV")
+
+  sig_df <- aldex_df %>% filter(one_or_two == "both")
+
+  message("Significant ASVs: ", nrow(sig_df))
+  
+  # If no significant ASVs, return basic results and skip plotting
+if (nrow(sig_df) == 0) {
+  message("No significant ASVs detected — exiting early.")
+  return(list(
+    sig_asvs = sig_df,
+    volcano = NULL,
+    grid = NULL
+  ))
+}
+
+
+  #────────────────────────────────────────────
+  # 4. Volcano plot
+  #────────────────────────────────────────────
+  aldex_plot_df <- aldex_df %>%
+    mutate(pointlabel = if_else(one_or_two == "both", Genus, ""),
+           size = if_else(one_or_two == "both", 3, 2),
+           famcolor = case_when(
+             one_or_two != "both" ~ "grey",
+             Class == "Gammaproteobacteria" ~ "#238b45",
+             Class == "Bacteroidia" ~ "#4292c6",
+             Class == "Actinomycetia" ~ "#ff7f00",
+             Class == "Alphaproteobacteria" ~ "#BBDE94",
+             TRUE ~ "black"
+           ))
+
+  volcano_plot <- ggplot(aldex_plot_df, aes(x = diff.win, y = diff.btw)) +
+    geom_point(aes(size = size, color = famcolor)) +
+    geom_text_repel(aes(label = pointlabel), max.overlaps = Inf) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+    geom_abline(slope = -1, intercept = 0, linetype = "dashed") +
+    scale_color_identity() + scale_size_identity() +
+    theme_cowplot() +
+    labs(title = paste("ALDEx2 Volcano Plot"),
+         x = "Dispersion (diff.win)", y = "Difference (diff.btw)")
+
+  ggsave(paste0(output_prefix, "_volcano.pdf"),
+         plot = volcano_plot, height = 6, width = 6)
+
+  #────────────────────────────────────────────
+  # 5. Create relative-abundance boxplots for sig ASVs
+  #────────────────────────────────────────────
+  ps_rel <- transform_sample_counts(ps_object, function(x) x/sum(x))
+  melted <- psmelt(ps_rel)
+
+  selected <- melted %>% filter(OTU %in% sig_df$ASV)
+
+  plot_list <- list()
+
+  for (i in seq_len(nrow(sig_df))) {
+    asv <- sig_df$ASV[i]
+    genus <- sig_df$Genus[i]
+
+    taxon_data <- selected %>% filter(OTU == asv)
+
+    p <- ggplot(taxon_data, aes_string(x = grouping_var, y = "Abundance", color = grouping_var)) +
+      geom_boxplot(outlier.shape = NA) +
+      geom_jitter(width = 0.2, size = 1.2) +
+      theme_pubr() +
+      theme(legend.position = "none",
+            axis.text.x = element_text(angle = 45, vjust = 0.5)) +
+      labs(title = genus, subtitle = asv, y = "Relative Abundance", x = NULL)+
+        theme(plot.title=element_text(hjust=0.5, face = "bold"), 
+          plot.subtitle=element_text(hjust=0.5))
+
+    plot_list[[i]] <- p
+  }
+
+  grid_plot <- plot_grid(plotlist = plot_list, ncol = 3)
+  ggsave(paste0(output_prefix, "_grid.pdf"), grid_plot, height = 5, width = 14)
+
+  #────────────────────────────────────────────
+  # Return outputs as a list
+  #────────────────────────────────────────────
+  return(list(
+    sig_asvs = sig_df,
+    volcano = volcano_plot,
+    grid = grid_plot
+  ))
+}
+
+
+
+
+```
+
+
+# LSTM-match - water vs larvae 
+
+None signficiant 
+
+```{r}
+
+lstm_match_WL <- ps.filled %>% subset_samples(sample_type == "water" | sample_type == "larvae") %>% subset_samples(uni_tx == "LSTM-match")
+
+sample_data(lstm_match_WL)$sample_type <- as.factor(sample_data(lstm_match_WL)$sample_type)
+lstm_match_WL <- prune_taxa(taxa_sums(lstm_match_WL) > 0, lstm_match_WL)
+sample_data(lstm_match_WL)$sample_type <- droplevels(sample_data(lstm_match_WL)$sample_type)
+
+
+results_LSTMmatch_WL <- run_aldex2_analysis_WL(
+  ps_object = lstm_match_WL,
+  grouping_var = "sample_type",
+  output_prefix = "LSTM-match_WL"
+)
+
+#0 
+
+```
+
+
+# LSTM-mismatch - water vs larvae
+
+```{r}
+lstm_mismatch_WL <- ps.filled %>% subset_samples(sample_type == "water" | sample_type == "larvae") %>% subset_samples(uni_tx == "LSTM-mismatch")
+
+sample_data(lstm_mismatch_WL)$sample_type <- as.factor(sample_data(lstm_mismatch_WL)$sample_type)
+lstm_mismatch_WL <- prune_taxa(taxa_sums(lstm_mismatch_WL) > 0, lstm_mismatch_WL)
+
+
+results_LSTMmismatch_WL <- run_aldex2_analysis_WL(
+  ps_object = lstm_mismatch_WL,
+  grouping_var = "sample_type",
+  output_prefix = "LSTM-mismatch_WL"
+)
+
+#no significant ASVs
+
+
+```
+
+# UW-match - water vs larvae 
+
+```{r}
+uw_match_WL <- ps.filled %>% subset_samples(sample_type == "water" | sample_type == "larvae") %>% subset_samples(uni_tx == "UW-match")
+
+sample_data(uw_match_WL)$sample_type <- as.factor(sample_data(uw_match_WL)$sample_type)
+uw_match_WL <- prune_taxa(taxa_sums(uw_match_WL) > 0, uw_match_WL)
+
+
+results_UWmatch_WL <- run_aldex2_analysis_WL(
+  ps_object = uw_match_WL,
+  grouping_var = "sample_type",
+  output_prefix = "UW-match_WL"
+)
+
+#3 signficant SVs - two chryseobacterium more common in water, one Leucobacter more common in water
+
+
+```
+
+#UW -mismatch - water vs larvae
+
+```{r}
+
+uw_mismatch_WL <- ps.filled %>% subset_samples(sample_type == "water" | sample_type == "larvae") %>% subset_samples(uni_tx == "UW-mismatch")
+
+sample_data(uw_mismatch_WL)$sample_type <- as.factor(sample_data(uw_mismatch_WL)$sample_type)
+uw_mismatch_WL <- prune_taxa(taxa_sums(uw_mismatch_WL) > 0, uw_mismatch_WL)
+
+
+results_UWmismatch_WL <- run_aldex2_analysis_WL(
+  ps_object = uw_mismatch_WL,
+  grouping_var = "sample_type",
+  output_prefix = "UW-mismatch_WL"
+)
+
+#2 sig asvs - pedobacter and microbacterceae
+
+
+```
+
+
+
+
+
+
+# Dev data ( no significant results )
+
+
+Adding in continuous variables! A few key things to keep in mind: 
+
+* Don't combine LSTM moz with UW moz, we know that the LSTM moz are generally bigger (mean of 2.73 vs 2.64, p = 3.4e-10 on Wlch's two-sample t-test)
+* make sure the dev  question you're asking isn't already answered by another metadata value 
+* Think about whether the microbial community could possibly have affected (or been affected by) the value you're looking at. Like... what does it mean to test the adult microbiome against wing length when the wing length is set at the larval stage?  
+
+From previous: 
+These ones do have "ecorr" coeffecient - if positive, bigger wings mean more Asaia or whatever development metrics on it..
+
+
+```{r}
+
+#test whether ASVs in the water can predict average wing length for that flask - UW samples
+
+
+
+# Filter and prune water samples
+ps.water_uw <- ps.filled %>%
+  subset_samples(sample_type == "water" & uni == "UW") %>%
+  prune_taxa(taxa_sums(.) > 0, .)
+
+
+# Extract and process metadata for adult samples
+md_adult_uw <- ps.filled %>%
+  subset_samples(sample_type == "adult" & uni == "UW") %>%
+  sample_data() %>% 
+  as.matrix() %>%
+  as.data.frame() %>% # Convert to data.frame before using dplyr
+  filter(!is.na(wing_length)) %>% # Filter missing wing_length values
+  mutate(
+    sorting_var = as.factor(sorting_var),
+    wing_length = as.numeric(wing_length)
+  )
+
+
+# Group by sorting_var and calculate summary statistics
+md_grouped <- md_adult_uw %>%
+  group_by(sorting_var) %>%
+  summarise(
+    avg_wing_length = mean(wing_length, na.rm = TRUE),
+    med_wing_length = median(wing_length, na.rm = TRUE),
+    sd_wing_length = sd(wing_length, na.rm = TRUE),
+    n_wings = n_distinct(sample_id)
+  ) %>%
+  ungroup() %>% # Ungroup after summarizing
+  as.data.frame()
+
+# Extract water sample metadata and merge with grouped wing data
+water_md <- sample_data(ps.water_uw) %>%
+  as.matrix() %>%
+  as.data.frame() %>%
+  left_join(md_grouped, by = "sorting_var") %>%
+  mutate(SampleID = sample_id) %>%
+  column_to_rownames(var = "sample_id")
+
+# Update sample data in the phyloseq object
+sample_data(ps.water_uw) <- sample_data(water_md)
+
+
+
+
+
+
+
+aldex2_clr_water_wing <- aldex.clr((as.data.frame(otu_table(ps.water_uw))),
+                             sample_data(ps.water_uw)$avg_wing_length,
+                             mc.samples=128,
+                             denom="all",
+                             verbose=TRUE,
+                             useMC=FALSE)
+
+
+
+aldex2_water_wing_corr <- aldex.corr(aldex2_clr_water_wing, sample_data(ps.water_uw)$avg_wing_length) #runs in less than 1 minute? 
+
+
+
+aldex2_water_wing_corr <- aldex2_water_wing_corr %>% rownames_to_column(var = "ASV")
+aldex2_water_wing_corr_significant<- aldex2_water_wing_corr%>% filter(pearson.eBH<0.05)
+# aldex2_pitcher_corr_significant<-aldex2_pitcher_corr_significant[,c(1:4)]
+
+
+taxa_info <- data.frame(tax_table(ps.water_uw))
+taxa_info <- taxa_info %>% rownames_to_column(var = "ASV")
+
+#then join to taxonomy by ASV name and generate final data frame of correlated asvs with taxonomy
+aldex2_corr_asv <- merge(aldex2_water_wing_corr_significant, taxa_info, by="ASV")
+#nope, nothing significant there. No taxa found in water correlated with bigger wings from that flask. 
+#4cbfff144d4e7a4e0f4619ed505be070 
+#This ASV had pearson.eBH = 0.063, all other were not even close 
+
+
+
+
+```
+
+
+
+
+
+
+# Can UW larval community composition predict adult wing length? 
+
+```{r}
+
+
+# Filter and prune water samples
+ps.larvae_uw <- ps.filled %>%
+  subset_samples(sample_type == "larvae" & uni == "UW") %>%
+  prune_taxa(taxa_sums(.) > 0, .)
+
+# Extract water sample metadata and merge with grouped wing data
+larv_md <- sample_data(ps.larvae_uw) %>%
+  as.matrix() %>%
+  as.data.frame() %>%
+  left_join(md_grouped, by = "sorting_var") %>%
+  mutate(SampleID = sample_id) %>%
+  column_to_rownames(var = "sample_id")
+
+# Update sample data in the phyloseq object
+sample_data(ps.larvae_uw) <- sample_data(larv_md)
+
+
+
+
+
+aldex2_clr_larv_wing <- aldex.clr((as.data.frame(otu_table(ps.larvae_uw))),
+                             sample_data(ps.larvae_uw)$avg_wing_length,
+                             mc.samples=128,
+                             denom="all",
+                             verbose=TRUE,
+                             useMC=FALSE)
+
+
+
+aldex2_larv_wing_corr <- aldex.corr(aldex2_clr_larv_wing, sample_data(ps.larvae_uw)$avg_wing_length) 
+
+aldex2_larv_wing_corr <- aldex2_larv_wing_corr %>% rownames_to_column(var = "ASV")
+aldex2_larv_wing_corr_significant<- aldex2_larv_wing_corr%>% filter(pearson.eBH<0.05)
+# aldex2_pitcher_corr_significant<-aldex2_pitcher_corr_significant[,c(1:4)]
+
+
+taxa_info <- data.frame(tax_table(ps.larvae_uw))
+taxa_info <- taxa_info %>% rownames_to_column(var = "ASV")
+
+#then join to taxonomy by ASV name and generate final data frame of correlated asvs with taxonomy
+aldex2_corr_asv <- merge(aldex2_water_wing_corr_significant, taxa_info, by="ASV")
+#nope, nothing significant there either. 
+
+
+
+
+```
+
+# Can LSTM water predict wing length? 
+
+
+```{r}
+
+
+# Filter and prune water samples
+ps.water_lstm <- ps.filled %>%
+  subset_samples(sample_type == "water" & uni == "LSTM") %>%
+  prune_taxa(taxa_sums(.) > 0, .)
+
+
+# Extract and process metadata for adult samples
+md_adult_lstm <- ps.filled %>%
+  subset_samples(sample_type == "adult" & uni == "LSTM") %>%
+  sample_data() %>% 
+  as.matrix() %>%
+  as.data.frame() %>% # Convert to data.frame before using dplyr
+  filter(!is.na(wing_length)) %>% # Filter missing wing_length values
+  mutate(
+    sorting_var = as.factor(sorting_var),
+    wing_length = as.numeric(wing_length)
+  )
+
+
+# Group by sorting_var and calculate summary statistics
+md_grouped <- md_adult_lstm %>%
+  group_by(sorting_var) %>%
+  summarise(
+    avg_wing_length = mean(wing_length, na.rm = TRUE),
+    med_wing_length = median(wing_length, na.rm = TRUE),
+    sd_wing_length = sd(wing_length, na.rm = TRUE),
+    n_wings = n_distinct(sample_id)
+  ) %>%
+  ungroup() %>% # Ungroup after summarizing
+  as.data.frame()
+
+# Extract water sample metadata and merge with grouped wing data
+water_md <- sample_data(ps.water_lstm) %>%
+  as.matrix() %>%
+  as.data.frame() %>%
+  left_join(md_grouped, by = "sorting_var") %>%
+  mutate(SampleID = sample_id) %>%
+  column_to_rownames(var = "sample_id")
+
+# Update sample data in the phyloseq object
+sample_data(ps.water_lstm) <- sample_data(water_md)
+
+
+
+######################
+
+
+
+aldex2_clr_water_wing_lstm <- aldex.clr((as.data.frame(otu_table(ps.water_lstm))),
+                             sample_data(ps.water_lstm)$avg_wing_length,
+                             mc.samples=128,
+                             denom="all",
+                             verbose=TRUE,
+                             useMC=FALSE)
+
+
+
+aldex2_water_wing_corr_lstm <- aldex.corr(aldex2_clr_water_wing_lstm, sample_data(ps.water_lstm)$avg_wing_length) 
+#started at 10:30
+
+
+
+aldex2_water_wing_corr_lstm <- aldex2_water_wing_corr_lstm %>% rownames_to_column(var = "ASV")
+aldex2_water_wing_corr_lstm_significant <- aldex2_water_wing_corr_lstm%>% filter(pearson.eBH<0.05)
+
+#nope, nothing significant there either. Nothing even close
+min(aldex2_water_wing_corr_lstm$pearson.eBH) #0.5642963 as lowest P value 
+
+
+
+
+```
+
+# now try for LSTM larvae ASVs vs avg adult wing length
+
+
+```{r}
+
+# Filter and prune water samples
+ps.larvae_lstm <- ps.filled %>%
+  subset_samples(sample_type == "larvae" & uni == "LSTM") %>%
+  prune_taxa(taxa_sums(.) > 0, .)
+
+# 
+# # Extract and process metadata for adult samples -
+# md_adult_lstm <- ps.filled %>%
+#   subset_samples(sample_type == "adult" & uni == "lstm") %>%
+#   sample_data() %>% 
+#   as.matrix() %>%
+#   as.data.frame() %>% # Convert to data.frame before using dplyr
+#   filter(!is.na(wing_length)) %>% # Filter missing wing_length values
+#   mutate(
+#     sorting_var = as.factor(sorting_var),
+#     wing_length = as.numeric(wing_length)
+#   )
+# 
+# 
+# # Group by sorting_var and calculate summary statistics
+# md_grouped <- md_adult_lstm %>%
+#   group_by(sorting_var) %>%
+#   summarise(
+#     avg_wing_length = mean(wing_length, na.rm = TRUE),
+#     med_wing_length = median(wing_length, na.rm = TRUE),
+#     sd_wing_length = sd(wing_length, na.rm = TRUE),
+#     n_wings = n_distinct(sample_id)
+#   ) %>%
+#   ungroup() %>% # Ungroup after summarizing
+#   as.data.frame()
+
+# Extract water sample metadata and merge with grouped wing data
+larv_md <- sample_data(ps.larvae_lstm) %>%
+  as.matrix() %>%
+  as.data.frame() %>%
+  left_join(md_grouped, by = "sorting_var") %>%
+  mutate(SampleID = sample_id) %>%
+  column_to_rownames(var = "sample_id")
+
+# Update sample data in the phyloseq object
+sample_data(ps.larvae_lstm) <- sample_data(larv_md)
+
+
+
+
+#now just merge by sorting_var because it's the exact sample for water/adults/larvae from the same flask!
+#yeehaw! We did it. 
+                
+
+#need to merge by something - make anew sorting_var column in the wing_length df? 
+
+#mismatch between number of samples and condition vector
+
+
+
+
+aldex2_clr_larv_wing <- aldex.clr((as.data.frame(otu_table(ps.larvae_lstm))),
+                             sample_data(ps.larvae_lstm)$avg_wing_length,
+                             mc.samples=128,
+                             denom="all",
+                             verbose=TRUE,
+                             useMC=FALSE)
+
+
+
+aldex2_larv_wing_corr <- aldex.corr(aldex2_clr_larv_wing, sample_data(ps.larvae_lstm)$avg_wing_length) 
+
+aldex2_larv_wing_corr <- aldex2_larv_wing_corr %>% rownames_to_column(var = "ASV")
+aldex2_larv_wing_corr_significant<- aldex2_larv_wing_corr%>% filter(pearson.eBH<0.05)
+#none
+min(aldex2_larv_wing_corr$pearson.eBH) #0.2907014 as lowest P value 
+
+```
+

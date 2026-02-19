@@ -1,0 +1,113 @@
+#Gemelli - read in exports from R, get distance matrix and ordination
+
+
+#Usage:
+../scripts/run_qiime_rpca.sh -table <table.qza> \
+-taxonomy <taxonomy.qza> \
+-metadata <metadata.tsv> \
+-tree <tree.nwk> \
+-outdir <output_directory>
+
+
+
+#Note: you can make a new table by specifying a new (manually created) metadata file and then trimming the table.qza file as below:
+
+
+qiime feature-table filter-samples --i-table full_objects/table.qza \
+    --m-metadata-file d3_mapFile.txt \
+    --o-filtered-table UW_match_no_h_table.qza 
+
+
+
+qiime feature-table filter-samples --i-table full_objects/full_table.qza \
+    --m-metadata-file trimmed_objects/uw_match/uw_match_metadata.tsv \
+    --o-filtered-table trimmed_objects/uw_match/uw_match_table.qza 
+
+
+
+#LSTM match samples 
+
+#first fix up the table (12/13/25)
+qiime tools import \
+  --input-path full_objects/full_table.biom \
+  --type 'FeatureTable[Frequency]' \
+  --input-format BIOMV100Format \
+  --output-path full_objects/full_table.qza
+  
+#trim table
+qiime feature-table filter-samples --i-table full_objects/full_table.qza \
+    --m-metadata-file trimmed_objects/lstm_match/lstm_match_metadata.tsv \
+    --o-filtered-table trimmed_objects/lstm_match/lstm_match_table.qza 
+
+../scripts/run_qiime_rpca.sh -table trimmed_objects/lstm_match/lstm_match_table.qza \
+-taxonomy full_objects/full_tax.txt \
+-metadata full_objects/full_metadata.tsv \
+-tree full_objects/full_tree.nwk \
+-outdir trimmed_objects/lstm_match/gemelli
+#CR002 not in dissimilarity matrix (zero reads)
+
+
+#LSTM mismatch samples
+
+#trim table
+qiime feature-table filter-samples --i-table full_objects/full_table.qza \
+    --m-metadata-file trimmed_objects/lstm_mismatch/lstm_mismatch_metadata.tsv \
+    --o-filtered-table trimmed_objects/lstm_mismatch/lstm_mismatch_table.qza 
+
+../scripts/run_qiime_rpca.sh -table trimmed_objects/lstm_mismatch/lstm_mismatch_table.qza \
+-taxonomy full_objects/full_tax.txt \
+-metadata full_objects/full_metadata.tsv \
+-tree full_objects/full_tree.nwk \
+-outdir trimmed_objects/lstm_mismatch/gemelli
+
+
+#UW mismatch and UW match 
+
+#UW-mismatch
+#trim table
+qiime feature-table filter-samples --i-table full_objects/full_table.qza \
+    --m-metadata-file trimmed_objects/uw_mismatch/uw_mismatch_metadata.tsv \
+    --o-filtered-table trimmed_objects/uw_mismatch/uw_mismatch_table.qza 
+
+../scripts/run_qiime_rpca.sh -table trimmed_objects/uw_mismatch/uw_mismatch_table.qza \
+-taxonomy full_objects/full_tax.txt \
+-metadata full_objects/full_metadata.tsv \
+-tree full_objects/full_tree.nwk \
+-outdir trimmed_objects/uw_mismatch/gemelli
+
+#note - CR329 not in dissimilarity matrix (zero reads) 
+
+#UW match 
+#trim table 
+qiime feature-table filter-samples --i-table full_objects/full_table.qza \
+    --m-metadata-file trimmed_objects/uw_match/uw_match_metadata.tsv \
+    --o-filtered-table trimmed_objects/uw_match/uw_match_table.qza 
+
+../scripts/run_qiime_rpca.sh -table trimmed_objects/uw_match/uw_match_table.qza \
+-taxonomy full_objects/full_tax.txt \
+-metadata full_objects/full_metadata.tsv \
+-tree full_objects/full_tree.nwk \
+-outdir trimmed_objects/uw_match/gemelli
+
+
+
+# Import all adult samples for PAM clustering 
+
+
+
+# ANd now, import all adults samples so that I can do PAM clustering stuff 
+
+#trim table
+qiime feature-table filter-samples --i-table full_objects/full_table.qza \
+    --m-metadata-file all_adults/adult_metadata.tsv \
+    --o-filtered-table all_adults/adult_table.qza 
+
+../scripts/run_qiime_rpca.sh -table all_adults/adult_table.qza \
+-taxonomy full_objects/full_tax.txt \
+-metadata full_objects/full_metadata.tsv \
+-tree full_objects/full_tree.nwk \
+-outdir all_adults/gemelli
+
+
+
+

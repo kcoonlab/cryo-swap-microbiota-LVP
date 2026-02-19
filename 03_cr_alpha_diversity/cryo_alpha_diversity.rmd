@@ -1,0 +1,708 @@
+---
+title: "cryo_alpha_diversity"
+author: "Holly Nichols"
+date: "2024-12-03"
+output: html_document
+---
+
+# Cryopreservation Alpha Diversity 
+
+**Goal**: How is alpha diversity affected by university (UW vs LSTM), treatment (match vs  mismatch), and duration of cryostorage (timepoint)? 
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(RColorBrewer)
+library(MetBrewer)
+library(dplyr)
+library(ggplot2)
+library(phyloseq)
+library(ape)
+library(vegan)
+library(ggpubr) #for gghistogram
+library(rstatix) #for wilcox_test
+library(BiocManager)
+#BiocManager::install("microbiome")
+library(microbiome) #for CLR transformation 
+library(devtools)
+#Sys.setenv("R_REMOTES_NO_ERRORS_FROM_WARNINGS"=TRUE)
+#install_github("pmartinezarbizu/pairwiseAdonis/pairwiseAdonis", auth_token = "AUTH_GOES_HERE")
+library(pairwiseAdonis) #for pairwise.adonis2
+#devtols::install_github("gauravsk/ranacapa", auth_token = "AUTH_GOES_HERE")
+library(ranacapa) #for pairwise_adonis, which has built-in p.adjust
+library(stats) #for p.adjust after pairwise.adonis2
+library(cowplot) #to make the ordination plots pretty 
+library(dunn.test) #for post-hoc test on alpha diversity 
+install.packages("multcompView")
+library(multcompView) #for adding letters to plots after ANOVA 
+
+
+
+
+ps.filled = readRDS("../data/phyloseq/crPSdecontam_cutoff_12_11_2025")
+#4493 taxa, 595 samples
+
+
+
+
+```
+
+
+# Summary stats
+
+Overview of reads/ASVs in this sequencing run - and choose rarefaction depth 
+
+```{r}
+
+ps.filled # the phyloseq object with the final samples 
+#4493 taxa and 595 samples 
+
+
+#How many reads per sample, and reads per sample_type? 
+
+samsum <- as.data.frame(sample_sums(ps.filled))
+colnames(samsum)[1] = "reads" #change column name to something useful 
+met <- as.data.frame(as.matrix(sample_data(ps.filled)))
+met <- met %>% rownames_to_column() %>% arrange(rowname)
+samsum <- samsum %>% rownames_to_column() %>% arrange(rowname)
+sum(samsum$reads)
+#18,936,817 total reads
+
+
+j<- left_join(samsum,met, by= "rowname")
+
+write.csv(j, "./choose_rarefaction.csv")
+#Choose 1042 for rarefaction, reduces number of samples lost
+
+reads_by_samtype <- j %>% group_by(sample_type) %>% summarise(avg_reads = mean(reads),
+                                               median_reads = median(reads), 
+                                               se_reads = sd(reads)/sqrt(n()) )
+
+
+#                 avg     median    SE
+# adult	      28949.72	26324.0	1194.755	
+# homogenate	38847.29	39043.5	1375.716	
+# larvae	    33876.95	22622.0	6527.530	
+# water	      38169.14	38305.0	1811.838	
+
+#mean/median of reads is consistent, but larvae hav high spread compared to others. Fewer reads off adult samples. 
+
+all_summarised <- j %>% summarise(avg = mean(reads), median = median(reads))
+#avg        median
+#31826.58	  32099	
+
+
+
+#What's the average number of ASVs in each sample type? 
+
+asvs_per_sample <- sample_sums(otu_table(ps.filled) > 0)
+summary(asvs_per_sample) #median of 22 ASVs overall 
+
+ps.UW <- subset_samples(ps.filled,uni =="UW") %>% prune_taxa(taxa_sums(.) >0, .) #1796 taxa
+ps.LSTM <- subset_samples(ps.filled,uni =="LSTM") %>% prune_taxa(taxa_sums(.) >0, .) #3008 taxa
+
+
+
+#What are the dominant ASVs? 
+
+
+#Extract the ASV abundance matrix and convert it to a data frame
+asv_table <- as.data.frame(otu_table(ps.filled))  # Get OTU/ASV table
+asv_totals <- rowSums(asv_table)          # Calculate total abundance per ASV
+
+#Calculate total reads in the experiment
+total_reads <- sum(asv_totals)
+
+#Create a data frame with ASV totals and their contribution
+asv_summary <- data.frame(
+  ASV = rownames(asv_table),
+  TotalAbundance = asv_totals,
+  PercentContribution = round((asv_totals / total_reads) * 100, 2) # Rounded to 2 decimal places
+)
+
+
+
+#Rank ASVs by total abundance (descending)
+asv_summary <- asv_summary %>%
+  arrange(desc(TotalAbundance))
+
+#17 total ASVs that are >1% of the dataset 
+
+# Identify the  most dominant ASVs
+top_asvs <- asv_summary[1:2, ]
+top_22_asvs <- asv_summary[1:22, ]
+
+#Elizabethkingia and Family Enterobacteriaceae make up 50% of reads 
+#next 20 reads take it up to 91% of reads 
+
+
+ps.h_UW <- subset_samples(ps.filled, sample_type == "homogenate" & uni == "UW") %>% prune_taxa(taxa_sums(.) > 0, .)
+#99 taxa
+
+ps.h_LSTM <- subset_samples(ps.filled, sample_type == "homogenate" & uni == "LSTM") %>% prune_taxa(taxa_sums(.) > 0, .)
+#729
+
+ps.all_LSTM <- subset_samples(ps.filled, uni == "LSTM") %>% prune_taxa(taxa_sums(.)>0,.)
+#3028 taxa
+
+ps.all_UW <- subset_samples(ps.filled, uni == "UW") %>% prune_taxa(taxa_sums(.)>0,.)
+#1797 taxa
+
+
+```
+
+# Higher taxonomic trends 
+
+What taxa dominate donor and recipient communities? Check out Class or Family level maybe? 
+
+```{r}
+
+#reload the objects from cryo_relabund_decontamfix.rmd 
+
+ps.genus_filled = readRDS("../data/phyloseq/crPSGenus_filled")
+ps.family_filled = readRDS("../data/phyloseq/crPSFamily")
+
+#order
+ps.order_filled = tax_glom(ps.filled, taxrank = 'Order') #glom to Order level
+saveRDS(ps.order_filled, "../data/phyloseq/crPSOrder")
+ps.order_filled = readRDS("../data/phyloseq/crPSOrder")
+#271 taxa
+
+
+#Class 
+ps.class_filled = tax_glom(ps.filled, taxrank = 'Class') #glom to Order level
+saveRDS(ps.class_filled, "../data/phyloseq/crPSClass")
+ps.class_filled = readRDS("../data/phyloseq/crPSClass")
+#101 taxa 
+
+
+class_reads <- taxa_sums(ps.class_filled) %>% as.data.frame() %>% rownames_to_column()
+colnames(class_reads) <- c("ASV", "reads")
+
+taxa_info <- data.frame(tax_table(ps.filled)) %>% rownames_to_column("ASV")
+
+class_reads %>% arrange(desc(reads)) %>%  # arrange in descending order for water
+  left_join(taxa_info) %>% dplyr::select(ASV, reads, Domain, Phylum, Class)
+
+total_reads <- sum(class_reads$reads)
+top_5_classes <- filter(class_reads, reads > 100000) 
+sum(top_5_classes$reads)/total_reads #that's 99.7% of reads! 
+
+
+#Top 5 classes - Gammaproteobacteria, Bacteroidia, Alphaproteobacteria, Actinomycetia, Bacilli  - 
+
+
+
+
+```
+
+
+# Plot higher taxonomic levels 
+
+(Additional File 2)
+
+```{r}
+
+#tax_table(ps.class_filled)
+
+class_relabund <- transform_sample_counts(ps.class_filled, function(x) x / sum(x) )
+melt_class <- psmelt(class_relabund)
+
+  
+melt_class_plot <- melt_class %>%
+  mutate(Class_plot = case_when(
+    Abundance < 0.1 ~ "< 10%",  #if that row is less than 10% of the reads in its sample, set ASV to  <10%
+    TRUE ~ Class                                     # Otherwise, call it the same value from Class
+  ))
+
+
+
+stacked_bar_class <- melt_class_plot %>%
+   ggplot(aes(x =sample_id, y = Abundance, fill = Class_plot)) +
+   geom_bar(stat = "identity") +
+   labs(x = "",y = "Relative Abundance",title = "Class Relative Abundance")+ 
+   facet_wrap(~interaction(sample_type, uni), scales = "free_x") +
+   theme_cowplot() + 
+   #theme(legend.position="none") +
+   theme(text = element_text(size=20), axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
+   theme(strip.text.x = element_text(size = 8)) +
+   scale_y_continuous(expand = c(0,0.001))+ # move x-axis up so it's nearly touching bars but not obscuring. could use 0,0 for most cases
+   coord_cartesian(ylim=c(0,1))
+
+stacked_bar_class
+
+#ggsave("./plots/relabund_CLASS_uni_samtype.pdf", height=7, width=9, device="pdf") 
+
+
+```
+
+
+
+
+
+
+# Rarefaction 
+
+Plot rarefaction curves. 
+Commented out parts because it takes a while to run. 
+
+```{r ggrare}
+
+library(ggpubr)
+#make a new variable that will distinguish UW donor pool from LSTM donor pool from all the 4 uni_tx combos,all in one variable 
+
+sample_data(ps.filled)$type_uni <- paste(sample_data(ps.filled)$uni_tx,
+                                         sample_data(ps.filled)$uni, sep = "_")
+
+
+#highlight saturationor farefaction at our chosen cutoff
+rareplot_type <- ggrare(ps.filled, step = 10, color = "type_uni", se = FALSE) + facet_wrap(~sample_type) + xlim(0,1042)
+#add colors 
+final_plot <- rareplot_type + scale_color_manual(values = c(
+  "LSTM-match_LSTM" = "#a6cee3",
+  "LSTM-mismatch_LSTM" = "#1f78b4",
+  "UW-match_UW" = "#b2df8a",
+  "UW-mismatch_UW" = "#33a02c",
+  "_LSTM" = "#fb9a99",
+  "_UW" = "#e31a1c"))+ 
+  theme_pubr()+
+ theme(legend.position="none")   #remove the legend as it isn't needed
+
+
+#ggsave("./plots/Rarecurve_uni_tx.pdf", height=5, width=7, device="pdf")
+
+
+###### Also include a longer version so that we can showthat we are saturating diversity with our sequencing - change xlim to the median read count (32099)
+
+rareplot_type_long <- ggrare(ps.filled, step = 100, color = "type_uni", se = FALSE) + facet_wrap(~sample_type) + xlim(0,32099)
+#make another rarefaction curve, this time with x axis extending to the median + of reads per sample 
+
+final_plot <- rareplot_type_long + scale_color_manual(values = c(
+  "LSTM-match_LSTM" = "#a6cee3",
+  "LSTM-mismatch_LSTM" = "#1f78b4",
+  "UW-match_UW" = "#b2df8a",
+  "UW-mismatch_UW" = "#33a02c",
+  "_LSTM" = "#fb9a99",
+  "_UW" = "#e31a1c"))+ 
+  theme_pubr()+
+ theme(legend.position="none")   #remove the legend as it isn't needed
+
+#ggsave("./plots/Rarecurve_uni_tx_long.pdf", height=5, width=7, device="pdf")
+
+
+
+
+
+#look at rarfaction overall - 
+
+
+ps.rarefied = rarefy_even_depth(ps.filled, rngseed=1, sample.size=1042, replace=F)
+#2854 taxa and 583 samples 
+ps.rarefied <- saveRDS(ps.rarefied, "../data/phyloseq/crPSRarefied")
+
+ps.rarefied <- readRDS("../data/phyloseq/crPSRarefied")
+
+```
+
+
+
+# Are there major differences in sampling depth by any of our factors of interest? (life stage, uni_tx, timepoint)
+
+If so, rarefaction might be unnecessarily biasing our conclusions. 
+
+Conclusion - no large differences in sequencing depth. Proceed. 
+
+
+```{r}
+
+sample_sums(ps.filled)
+
+#define a temporary phyloseq object to play with
+ps.temp <- ps.filled
+
+# create new column in metadata with read depth
+sample_data(ps.temp)$read_depth <- sample_sums(ps.filled)
+
+depth_df <- as.data.frame(as.matrix((sample_data(ps.temp))))
+dim(depth_df)
+
+#now plot read depth by various factors of interest
+
+simpler <- depth_df %>% dplyr::select(sample_id, uni_tx, timepoint, sample_type, read_depth, pool_name)
+simpler$read_depth <- as.numeric(simpler$read_depth)
+simpler <-  mutate(simpler, log_depth = log10(read_depth))
+
+
+plot <- simpler %>%
+  ggplot+
+  geom_boxplot() +#outlier.shape = NA) +
+  aes(x=sample_type, y=log_depth, fill=sample_type) +
+  #scale_fill_manual(values = c("#A6CEE3", "#1F78B4"))+ 
+  #coord_cartesian(ylim=c(0,1)) + # adjust y-axis
+  #xlab("Sample Type") +
+  #ylab("Shannon")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  geom_jitter(width = 0.2, size=1.5) +
+  #facet_wrap(~uni, scales = "free_x", nrow = 1) +
+
+  ggtitle("Read Depth by sample type")
+
+
+
+
+plot1 <- simpler %>%
+  ggplot+
+  geom_boxplot() +#outlier.shape = NA) +
+  aes(x=uni_tx, y=log_depth, fill=uni_tx) +
+  #scale_fill_manual(values = c("#A6CEE3", "#1F78B4"))+ 
+  #coord_cartesian(ylim=c(0,1)) + # adjust y-axis
+  #xlab("Sample Type") +
+  #ylab("Shannon")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  geom_jitter(width = 0.2, size=1.5) +
+  #facet_wrap(~uni, scales = "free_x", nrow = 1) +
+
+  ggtitle("Read Depth by uni_tx")
+
+
+
+
+
+plot2 <- simpler %>%
+  ggplot+
+  geom_boxplot() +#outlier.shape = NA) +
+  aes(x=pool_name, y=log_depth, fill=pool_name) +
+  #scale_fill_manual(values = c("#A6CEE3", "#1F78B4"))+ 
+  #coord_cartesian(ylim=c(0,1)) + # adjust y-axis
+  #xlab("Sample Type") +
+  #ylab("Shannon")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  geom_jitter(width = 0.2, size=1.5) +
+  #facet_wrap(~uni, scales = "free_x", nrow = 1) +
+
+  ggtitle("Read Depth by sequencing run ")
+
+
+
+
+plot3 <- simpler %>%
+  ggplot+
+  geom_boxplot() +#outlier.shape = NA) +
+  aes(x=timepoint, y=log_depth, fill=timepoint) +
+  #scale_fill_manual(values = c("#A6CEE3", "#1F78B4"))+ 
+  #coord_cartesian(ylim=c(0,1)) + # adjust y-axis
+  #xlab("Sample Type") +
+  #ylab("Shannon")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  geom_jitter(width = 0.2, size=1.5) +
+  #facet_wrap(~uni, scales = "free_x", nrow = 1) +
+
+  ggtitle("Read Depth by timepoint")
+
+
+
+plot
+plot1
+plot2
+plot3
+
+#looks good - no major differnces in read depth. Some variaiton by sample type, as expected, but no huge bias
+
+```
+
+
+
+
+
+# Alpha diversity metrics 
+
+Goals: plot observed, shannon, simpson. 
+Coming in with the rarefied phyloseq object (1042)
+
+
+## Diversity by sample type (all samples)
+
+Note that this is the only time rarefied phyloseq object should be use - for alpha diversity calculations!
+
+```{r shannon}
+#### Alpha Diversity Metrics ####
+
+
+
+Richness <- phyloseq::estimate_richness(ps.rarefied, split = TRUE, measures = c("Observed","Shannon", "InvSimpson", "Chao1")) 
+
+
+Summary <- Richness %>%
+  bind_cols(ps.rarefied %>% sample_data %>% as_tibble())
+head(Summary) #Richness Estimates
+dim(Summary)
+
+#write.csv(Summary,"ShannonTable.csv")
+
+#fix things that should be factors
+
+cols <- c("sample_type", "pool_name", "uni", "uni_tx", "tx", "timepoint", "stock_origin")
+Summary[cols] <- lapply(Summary[cols], factor)
+#sapply(Summary,class) #check whether metadata values are desired class
+
+#wing_length needs to be a numeric
+Summary$wing_length <- as.numeric(Summary$wing_length)
+
+
+
+#need to know if data are symmetrically distributed before doing any stats
+gghistogram(Summary, x = "Shannon", y = "..density..", 
+            fill = "steelblue",bins = 20, add_density = TRUE) + ggtitle("Distribution of Shannon Scores") 
+#not very symmetrical, - strong leftwards tilt
+
+gghistogram(Summary, x = "Observed", y = "..density..", 
+            fill = "steelblue",bins = 20, add_density = TRUE) + ggtitle("Distribution of Observed Taxa")
+#this one is much more symmetrical. Most have 10-40 taxa, with a few samples with >100 taxa
+
+gghistogram(Summary, x = "Chao1", y = "..density..", 
+            fill = "steelblue",bins = 20, add_density = TRUE) + ggtitle("Distribution of Chao1")
+#Not terrible
+
+gghistogram(Summary, x = "InvSimpson", y = "..density..", 
+            fill = "steelblue",bins = 20, add_density = TRUE) + ggtitle("Distribution of InvSimpson")
+#wildly biased towards the left here. 
+
+
+
+#let's just plot the alpha div right here and now! 
+
+
+plot <- Summary %>%
+  ggplot+
+  geom_boxplot() +#outlier.shape = NA) +
+  aes(x=sample_type, y=Shannon, fill=sample_type) +
+  scale_fill_manual(values = met.brewer("Tam", 6)) + 
+  #coord_cartesian(ylim=c(0,1)) + # adjust y-axis
+  xlab("Sample Type") +
+  ylab("Shannon")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("Alpha Diversity by Sample Type (rarefied = 1042)")
+
+plot
+
+#homogenate diversity lowest, then water + larvae, then adults 
+
+
+
+
+###Summary of  test on richness (Shannon) - sample_type
+kruskal.test(Shannon ~ sample_type, data = Summary) 
+#Kruskal-Wallis chi-squared = 64.323, df = 3, p-value = 7.002e-14
+dunn.test(Summary$Shannon,Summary$sample_type,method = "bonferroni")
+pairwise.wilcox.test(Summary$Shannon, Summary$sample_type, p.adj = "bonf", exact = FALSE)
+#Dunn: adult the same as water and larvae, but homogenate is lower than everyting else. 
+#pairwise.wilcox: adult the same as water and larvae, but homogenate is lower than everyting else. 
+
+
+
+Summary_UW <- filter(Summary, uni == "UW")
+kruskal.test(Shannon ~ sample_type, data = Summary_UW) # p < 2.2e-16
+dunn.test(Summary_UW$Shannon,Summary_UW$sample_type,method = "bonferroni")
+#donor pool lower than everythign else
+
+Summary_LSTM <- filter(Summary, uni == "LSTM")
+kruskal.test(Shannon ~ sample_type, data = Summary_LSTM) 
+#Kruskal-Wallis chi-squared = 2.5504, df = 3, p-value = 0.4662
+#donor pool has higher div, so no differences here
+
+
+
+
+
+```
+
+
+
+
+
+# Alpha div of adults Timepoint - faceted by uni_tx - for manuscript (Additional File 3)
+
+Final manuscript version, complete with ice-blue colors. CLD added in Inkscape to represent significant comparisons, see chunk below for details. 
+
+
+```{r}
+Summary_adults_only <- Summary %>% dplyr::filter(sample_type == "adult")
+
+
+plot <- Summary_adults_only %>%
+  ggplot+
+  geom_boxplot() +#outlier.shape = NA) +
+  aes(x=timepoint, y=Shannon, fill=timepoint) +
+  #scale_fill_manual(values = met.brewer("Tam", 6)) + 
+  scale_fill_manual(values = c("#E5F6FF", "#B5DEFF", "#85C6FF", "#559EFF", "#2F74F5", "#153FBF"))+
+  #coord_cartesian(ylim=c(0,1)) + # adjust y-axis
+  xlab("Sample Type") +
+  ylab("Shannon")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed+
+  facet_wrap(~uni_tx) +
+  ggtitle("Alpha Diversity by Time Point (rarefied = 1042)")
+
+plot
+
+#ggsave("plots/alphadiv_timepoint_faceted_unitx.pdf",height=5, width=7, device="pdf")
+
+
+#temp to count 
+Summary_adults_only %>% filter(uni == "LSTM")
+
+
+
+```
+
+# Time alpha div stats for manuscript (AF3)
+
+```{r}
+
+#######stats on just LSTM-match #######
+
+#Rswitch to swap to R version 4.4.0 to be able to instsall rcompanion for compact letter display (CLD)
+
+#install.packages("rcompanion")
+library(rcompanion)
+#install.packages("FSA")
+library(FSA)
+
+
+###### LSTM match 
+Summary_LSTM_match_adults  <- Summary_adults_only %>%filter(uni_tx == "LSTM-match")
+kruskal.test(Shannon ~ timepoint, data = Summary_LSTM_match_adults ) 
+#Kruskal-Wallis chi-squared = 33.575, df = 5, p-value = 2.893e-06
+Phocdunn <- dunnTest(Shannon ~ timepoint, data=Summary_LSTM_match_adults, method="bonferroni")   
+Phocdunns <- Phocdunn$res
+
+cld_LSTM_match <- cldList(comparison = Phocdunns$Comparison,
+        p.value    = Phocdunns$P.adj,
+        threshold  = 0.05)[1:2] 
+#Weird behavior of deleting any 0 characters in the Group name, but we can work with that!
+
+
+#d16 and d30 are lower than 0h
+#d16 lower than 24h
+#d16 also diff from mo6
+
+
+
+
+########stats on just UW_match #######
+
+Summary_UW_match_adults  <- Summary_adults_only%>%filter(uni_tx == "UW-match")
+kruskal.test(Shannon ~ timepoint, data = Summary_UW_match_adults ) 
+#Kruskal-Wallis chi-squared = 19.273, df = 5, p-value = 0.001709
+Phocdunn <- dunnTest(Shannon ~ timepoint, data=Summary_UW_match_adults, method="bonferroni")   
+Phocdunns <- Phocdunn$res
+cld_UW_match <- cldList(comparison = Phocdunns$Comparison,
+        p.value    = Phocdunns$P.adj,
+        threshold  = 0.05)[1:2] 
+
+# 0h is same as all the rest!  
+#24h is actaully higher than d10, that's the only diff
+
+
+#stats on LSTM-mismatch 
+Summary_LSTM_mismatch_adults  <- Summary_adults_only%>%filter(uni_tx == "LSTM-mismatch")
+kruskal.test(Shannon ~ timepoint, data = Summary_LSTM_mismatch_adults ) 
+#Kruskal-Wallis chi-squared = 27.856, df = 2, p-value = 8.935e-07
+Phocdunn <- dunnTest(Shannon ~ timepoint, data=Summary_LSTM_mismatch_adults, method="bonferroni")   
+Phocdunns <- Phocdunn$res
+cld_UW_mismatch <- cldList(comparison = Phocdunns$Comparison,
+        p.value    = Phocdunns$P.adj,
+        threshold  = 0.05)[1:2] 
+#d30 is lower than the others, d6 and mo6 are not different
+
+
+
+
+#stats on UW-mismatch 
+Summary_UW_mismatch_adults  <- Summary_adults_only%>%filter(uni_tx == "UW-mismatch")
+kruskal.test(Shannon ~ timepoint, data = Summary_UW_mismatch_adults ) 
+#Kruskal-Wallis chi-squared = 5.4648, df = 2, p-value = 0.06506
+#not sig, do not follow with Dunn's
+
+```
+
+
+
+
+
+
+
+
+
+# Adult alpha diversity (rarefied), Figure 3b
+
+For manuscript - adult diversity by uni-tx (no donor pool)
+
+
+```{r}
+
+summary_adults <- Summary %>% filter(sample_type == "adult")
+
+
+
+
+plot <- summary_adults %>%
+  ggplot+
+  geom_boxplot() +#outlier.shape = NA) +
+  aes(x=uni_tx, y=Shannon, fill=uni) +
+  scale_fill_manual(values = c("#A6CEE3", "#1F78B4"))+ 
+  #coord_cartesian(ylim=c(0,1)) + # adjust y-axis
+  xlab("Sample Type") +
+  ylab("Shannon")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  facet_wrap(~uni, scales = "free_x", nrow = 1) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("Adult Alpha Diversity")
+
+plot
+
+#ggsave("./plots/shannon_unitx.pdf", height=5, width=4, device="pdf") 
+
+
+
+
+
+```
+
+
+
+
+# Alpha div by uni_tx stats for manuscript 
+
+```{r}
+
+library(stringr)#cld doesn't like dashes in names , fix that first
+Summary_adults_only$uni_tx <-
+  str_replace_all(Summary_adults_only$uni_tx, "-", "_")
+
+kruskal.test(Shannon ~ uni_tx, data = Summary_adults_only) 
+#Kruskal-Wallis chi-squared = 19.264, df = 3, p-value = 0.0002411
+Phocdunn <- dunnTest(Shannon ~ uni_tx, data=Summary_adults_only, method="bonferroni")   
+Phocdunns <- Phocdunn$res
+
+
+cld_unitx <- cldList(comparison = Phocdunns$Comparison,
+        p.value    = Phocdunns$P.adj,
+        threshold  = 0.05)[1:2] 
+
+#a a b ab 
+```
+

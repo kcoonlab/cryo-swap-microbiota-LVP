@@ -1,0 +1,1487 @@
+---
+title: "cryo_diversity_and_ordinations"
+author: "Holly Nichols"
+date: "2024-01-17"
+output: html_document
+---
+
+
+# Beta Diversity and Ordinations 
+
+
+### Goals
+
+Do samples in the same treatment (match/mismatch) or from the same university cluster together? 
+How closely do the reicpient adults mirror the donor pool they receive? 
+How distinct are 
+Does beta diversity diverge once donor pool is stored in the freezer for increasing time? 
+How distinct are the inital donor pools? 
+
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(RColorBrewer)
+library(MetBrewer)
+library(dplyr)
+library(ggplot2)
+library(phyloseq)
+library(ape)
+library(vegan)
+library(ggpubr) #for gghistogram
+library(rstatix) #for wilcox_test
+#library(philr) #for philR transformation adn plotting 
+library(microbiome) #for CLR transformation 
+#library(pairwiseAdonis) #for pairwise.adonis2
+library(ranacapa) #for pairwise_adonis, which has built-in p.adjust
+library(stats) #for p.adjust after pairwise.adonis2
+library(cowplot) #to make the ordination plots pretty 
+library(dunn.test) #for post-hoc test on alpha diversity 
+library(multcompView) #for adding letters to plots after ANOVA 
+#devtools::install_github("jbisanz/qiime2R", auth_token = "AUTH_GOES_HERE")
+library(qiime2R) #to import/export from qiime
+library(tibble) #for rownames_to_column
+library(tidyverse)
+
+
+ps.filled = readRDS("../data/phyloseq/crPSFilled")
+ps.filled <- prune_taxa(taxa_sums(ps.filled) > 0, ps.filled)
+#4493 taxa and 595 samples 12/12/2025
+
+```
+
+
+
+
+#Beta diversity 
+
+
+## RPCA from Gemelli
+
+
+First, export cleaned phyloseq object to qiime (ps.filled). Start with full object, can subset in qiime using a trimmed metadata object
+
+```{r}
+
+#only use samples with >1041 reads to match samples used in alpha div 
+ps.1042 <- prune_samples(sample_sums(ps.filled) > 1041, ps.filled ) %>% prune_taxa(taxa_sums(.) >0,.)
+temp <- as.data.frame(as.matrix((sample_data(ps.1042))))
+sample_data(ps.1042) <- mutate(temp, graphvar = paste(sample_type,uni_tx,uni, sep = "_")) #create new column that will make it easy to graph adults and homogenates on same graph 
+#4444 asvs, 583 samples
+#12/12/2025
+
+
+# Export taxonomy table as "tax.txt"
+
+
+# Export taxonomy table as text file
+tax<-as(tax_table(ps.1042),"matrix")
+tax_cols <- colnames(tax)
+tax<-as.data.frame(tax)
+
+# Add prefixes to each column, qiime wants those 
+prefixes <- c("k__", "p__", "c__", "o__", "f__", "g__", "s__", "")
+taxonomy_prefixed <- tax %>%
+  mutate(across(
+    everything(), 
+    .fns = ~ paste0(prefixes[which(names(tax) == cur_column())], .)
+  ))
+taxonomy_prefixed$taxonomy<-do.call(paste, c(taxonomy_prefixed[tax_cols], sep=";"))#this will create a new column with all tax info separated by ";"
+for(co in tax_cols) taxonomy_prefixed[co]<-NULL #remove all non-concat columns
+write.table(taxonomy_prefixed, "qiime_gemelli/full_objects/full_tax.txt", quote=FALSE, col.names=FALSE, sep="\t")
+
+
+# Export feature/OTU table as otu_biom.biom
+
+library(biomformat);packageVersion("biomformat")
+
+otu<-(as(otu_table(ps.1042),"matrix")) # add 't' to transform if taxa_are_rows=FALSE
+otu_biom<-make_biom(data=otu)
+write_biom(otu_biom,"qiime_gemelli/full_objects/full_table.biom")
+
+
+
+# Export metadata to sample-metadata.txt
+
+
+metadat <- sample_data(ps.1042) %>%
+  data.frame() %>%  # Strip sample_data attributes completely
+  rownames_to_column("sample-id") #rename for qiime 
+write.table(metadat, "qiime_gemelli/r2q/fill_metadata.tsv", quote=FALSE, sep='\t', row.names = FALSE)
+
+#Finally, export the tree as a Newick file (necessary for phylo-rpca). 
+tree <- phy_tree(ps.1042)
+write.tree(tree, file = "qiime_gemelli/full_objects/full_tree.nwk")
+
+
+
+
+
+
+
+
+```
+
+
+#Export adult + homogenate samples to qiime (gemelli)
+
+```{r adulth}
+
+
+ps.adult_h <- subset_samples(ps.1042, sample_type == "adult" | sample_type == "homogenate")
+ps.adult_h <- prune_taxa(taxa_sums(ps.adult_h) > 0, ps.adult_h)
+
+# Export feature/OTU table as otu_biom.biom
+
+otu<-(as(otu_table(ps.adult_h),"matrix")) 
+otu_biom<-make_biom(data=otu)
+write_biom(otu_biom,"qiime_gemelli/adults_and_donors/adult_h_table.biom")
+
+# Export taxonomy table as text file
+
+tax<-as(tax_table(ps.adult_h),"matrix")
+tax_cols <- colnames(tax)
+tax<-as.data.frame(tax)
+
+# Add prefixes to each column, qiime wants those 
+prefixes <- c("k__", "p__", "c__", "o__", "f__", "g__", "s__", "")
+taxonomy_prefixed <- tax %>%
+  mutate(across(
+    everything(), 
+    .fns = ~ paste0(prefixes[which(names(tax) == cur_column())], .)
+  ))
+taxonomy_prefixed$taxonomy<-do.call(paste, c(taxonomy_prefixed[tax_cols], sep=";"))#this will create a new column with all tax info separateed by ";"
+for(co in tax_cols) taxonomy_prefixed[co]<-NULL #remove all non-concat columns
+write.table(taxonomy_prefixed, "qiime_gemelli/adults_and_donors/adult_h_tax.txt", quote=FALSE, col.names=FALSE, sep="\t")
+
+
+
+# Export metadata to sample-metadata.txt
+
+metadat <- sample_data(ps.adult_h) %>%
+  data.frame() %>%  # Strip sample_data attributes completely
+  rownames_to_column("sample-id") #rename for qiime 
+
+write.table(metadat, "qiime_gemelli/adults_and_donors/adult_h_sample-metadata.tsv", quote=FALSE, sep='\t', row.names = FALSE)
+
+#Finally, export the tree as a Newick file (necessary for phylo-rpca). 
+tree <- phy_tree(ps.adult_h)
+write.tree(tree, file = "qiime_gemelli/adults_and_donors/tree.nwk")
+
+
+
+```
+
+
+# Next, move to qiime to make ordinations + distance matrices 
+
+#Bring RPCA back go R for plotting (Fig 4A)
+
+
+```{r plot-rpca}
+
+
+#read in RPCA ordination
+rpca_ah <- read_qza("../data/qiime_gemelli/adults_and_donors/gemelli/rpca_ordination.qza")
+rpca_ah_axes <- rpca_ah$data$ProportionExplained
+rpca_ah <- rpca_ah$data$Vectors %>% dplyr::select(SampleID,PC1,PC2)
+rpca_ah <- rpca_ah %>% mutate(sample_id = SampleID)
+
+str(rpca_ah)
+
+metadat <- metadat %>% 
+  mutate(SampleID = sample_id) #fix sample_id vs SampleID differene before merging
+#metadata2 <- subset(metadat, select = -c(sample_id) ) #not sure what this should do...? 
+
+
+#merge metadata and ordination
+rpca_md <- merge(metadat, rpca_ah, by = "SampleID")
+head(rpca_md)
+
+
+
+
+ggplot(rpca_md, aes(x=PC1, y=PC2, color = graphvar)) + geom_point(aes(fill = graphvar),pch=21, size=2)+
+  ggtitle("RPCA - Robust Aitchison")+
+  scale_color_manual(values = c("#AECDE1","#3C76B0","#BBDE94","#549E3F","#ED9F9C","#D0352B"))+ #placeholders for now 
+  scale_fill_manual(values = c("#AECDE1","#3C76B0","#BBDE94","#549E3F","#ED9F9C","#D0352B"))+ #placeholders for now 
+  theme_cowplot()+
+    xlab(paste0("PC1 (", signif((rpca_ah_axes$PC1) * 100, 4), "%)")) + 
+    ylab(paste0("PC2 (", signif((rpca_ah_axes$PC2) * 100, 4), "%)")) +
+ # labs_pubr()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 16),
+        axis.text = element_text(size = 16))+
+  stat_ellipse( type = "norm")
+
+
+#ggsave("./plots/RPCA_adults_homogenates.pdf", height=5, width=9, device="pdf") 
+```
+
+
+https://forum.qiime2.org/t/to-remove-a-sample-from-alpha-beta-diversity-files-remove-from-matrix-or-from-metadata-and-count-table/18309/3
+PCoA must be re-calculated if you remove samples because the pcoa is dependent on pairs of samples. 
+
+
+
+
+
+#Bring phylo-rpca back for plotting (Fig 4B)
+
+```{r plot-phylo-rpca}
+
+
+phylo_rpca_ah <- read_qza("../data/qiime_gemelli/adults_and_donors/gemelli/phylo_rpca_ordination.qza")
+rpca_ah_axes <- phylo_rpca_ah$data$ProportionExplained
+phylo_rpca_ah <- phylo_rpca_ah$data$Vectors %>% select(SampleID,PC1,PC2)
+phylo_rpca_ah <- phylo_rpca_ah %>% mutate(sample_id = SampleID) #add new column to match metadata
+
+
+head(rpca_ah)
+
+
+#merge metadata and ordination
+phylo_rpca_md <- merge(metadat, phylo_rpca_ah, by = "sample_id")
+head(phylo_rpca_md)
+
+
+
+
+ggplot(phylo_rpca_md, aes(x=PC1, y=PC2, color = graphvar)) + geom_point(aes(fill = graphvar),pch=21, size=2)+
+  ggtitle("phylo-RPCA")+
+  scale_color_manual(values = c("#AECDE1","#3C76B0","#BBDE94","#549E3F","#ED9F9C","#D0352B"))+ 
+  scale_fill_manual(values = c("#AECDE1","#3C76B0","#BBDE94","#549E3F","#ED9F9C","#D0352B"))+ 
+  theme_cowplot()+
+    xlab(paste0("PC1 (", signif((rpca_ah_axes$PC1) * 100, 4), "%)")) + 
+    ylab(paste0("PC2 (", signif((rpca_ah_axes$PC2) * 100, 4), "%)")) +
+ # labs_pubr()+
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 16),
+        axis.text = element_text(size = 16))+
+  stat_ellipse( type = "norm")
+
+#ggsave("./plots/phylo_RPCA_adults_homogenates.pdf", height=5, width=9, device="pdf") 
+
+
+```
+
+
+
+
+
+# Stats on rpca and phylo-rpca: 
+
+Are these groups significantly different (PERMANOVA)?
+Which taxa affect the clustering we see? 
+
+An example of a paper this did use rpca and do adonis2 
+https://academic.oup.com/biomedgerontology/article/78/10/1925/6992157
+
+
+PERMANOVA
+```{r permanova-rpca}
+
+
+rpcadist <- read_qza("../data/qiime_gemelli/adults_and_donors/gemelli/rpca_distance.qza")
+rpcadist <- rpcadist$data
+
+
+#make a header for the first column/rownames of the dist matrix 
+
+#To ensure that I'm correctly pairing the sample_type with the order of the dist object,
+#Make a df that joins the dist and the unordered metadata object 
+rpcadist_df <- rpcadist %>% as.matrix() %>% as.data.frame() 
+rpcadist_df <- cbind(rownames(rpcadist_df), data.frame(rpcadist_df, row.names =NULL)) 
+
+colnames(rpcadist_df)[1] <- "SampleID"
+joined <- inner_join(rpcadist_df,metadat, by = "SampleID")
+
+adonis2(rpcadist~joined$graphvar) # p = 0.001, significant! 
+#                  Df SumOfSqs      R2      F Pr(>F)    
+# joined$graphvar   5   406.91 0.38691 57.555  0.001 ***
+# Residual        456   644.79 0.61309                  
+# Total           461  1051.70 1.00000                      
+
+
+joined$graphvar <- as.vector(joined$graphvar)
+ps.disper <- betadisper(rpcadist,joined$graphvar) 
+ps.disper
+#    adult_LSTM-match_LSTM adult_LSTM-mismatch_LSTM        adult_UW-match_UW 
+#                   1.3073                   1.4741                   0.9226 
+#     adult_UW-mismatch_UW         homogenate__LSTM           homogenate__UW 
+#                   0.9240                   0.7799                   0.4442 
+# 
+# Eigenvalues for PCoA axes:
+# PCoA1 PCoA2 PCoA3 
+# 472.3 467.1 112.3 
+
+permutest(ps.disper) #significant, proceed with pairwise 
+permutest(ps.disper,pairwise=TRUE)
+summary(permustats(permutest(ps.disper, pairwise=TRUE)))
+#listing comparisons that are NOT significant (aka have the same dispersion)
+#adult uw match vs adult UW mismatch
+#adult_UW-mismatch vs homogenate__LSTM
+
+
+library(pairwiseAdonis)
+pairwise.adonis(joined[ ,2:463], joined$graphvar, p.adjust.m = "bonferroni")
+
+
+
+#not significant: 
+#adult_LSTM-match_LSTM vs adult_LSTM-mismatch_LSTM
+
+
+```
+
+#phylo-rpca permanova 
+
+```{r}
+
+#try phylo-rpca, 
+phylo_rpcadist <- read_qza("../data/qiime_gemelli/adults_and_donors/gemelli/phylo_distance.qza")
+phylo_rpcadist <- phylo_rpcadist$data
+phylo_rpcadist_df <- phylo_rpcadist %>% as.matrix() %>% as.data.frame() 
+phylo_rpcadist_df <- cbind(SampleID = rownames(phylo_rpcadist_df), data.frame(phylo_rpcadist_df, row.names =NULL)) 
+
+colnames(phylo_rpcadist_df)[1] <- "SampleID"
+joined2 <- inner_join(phylo_rpcadist_df,metadat, by = "SampleID")
+
+
+
+
+adonis2(phylo_rpcadist~joined2$graphvar) # p = 0.001, significant! 
+#                  Df SumOfSqs      R2      F Pr(>F)    
+#joined2$graphvar   5   412.50 0.44279 72.471  0.001 ***
+
+
+joined2$graphvar <- as.vector(joined2$graphvar)
+ps.disper <- betadisper(phylo_rpcadist,joined2$graphvar) 
+ps.disper # similar trends to the rpca, with tighter clustering of UW-match and UW mismatch. 
+
+#    adult_LSTM-match_LSTM adult_LSTM-mismatch_LSTM        adult_UW-match_UW 
+#                   1.2392                   1.2006                   0.7010 
+#     adult_UW-mismatch_UW         homogenate__LSTM           homogenate__UW 
+#                   0.6031                   0.9968                   0.4745 
+# 
+# Eigenvalues for PCoA axes:
+#   PCoA1   PCoA2   PCoA3 
+# 465.919 462.482   3.206 
+
+
+permutest(ps.disper) #significant, proceed with pairwise 
+permutest(ps.disper,pairwise=TRUE)
+summary(permustats(permutest(ps.disper, pairwise=TRUE)))
+#listing comparisons that are NOT significant (aka have the same dispersion)
+#adult uw match vs adult UW mismatch
+#adult_UW-mismatch_UW-homogenate__LSTM
+
+
+pairwise.adonis(joined2[ ,2:463], joined$graphvar, p.adjust.m = "bonferroni")
+
+```
+
+
+# Next, move back to qiime and generate separate distance matrices for LSTM-match, LSTM-mismatch, etc... to analyze differences by *life stage* within each treatment 
+
+
+# Create function for importing back from qiime and plotting ordinations
+
+Go back to qiime to subset to each value of uni_tx and get rpca/phylo-rpca by sample_type
+Note that this currenlty can handle 3 or fewer groups due to the way I've coded colors, would need to expand it for other projects
+
+```{r}
+
+
+
+met_all <- sample_data(ps.filled) %>% as.matrix() %>% as.data.frame()
+
+# Define the function
+create_rpca_plot <- function(ordination_path, metadata_filter, plot_title) {
+  # Read ordination object
+  rpca <- read_qza(ordination_path)
+
+  # Extract proportion explained and vectors
+  axes <- rpca$data$ProportionExplained
+  rpca_vectors <- rpca$data$Vectors %>% select(SampleID, PC1, PC2)
+
+  # Adjust for SampleID in metadata
+  metadata_filtered <- met_all %>%
+    mutate(SampleID = sample_id) %>%
+    filter(uni_tx == metadata_filter)
+
+  # Merge metadata and ordination vectors
+  merged_data <- merge(metadata_filtered, rpca_vectors, by = "SampleID")
+
+  # Create the ggplot object
+  plot <- ggplot(merged_data, aes(x = PC1, y = PC2, color = sample_type)) +
+    geom_point(aes(fill = sample_type), pch = 21, size = 2) +
+    ggtitle(plot_title) +
+    scale_color_manual(values = c("#AECDE1", "#BBDE94", "#3C76B0")) + 
+    scale_fill_manual(values = c("#AECDE1", "#BBDE94", "#3C76B0")) + 
+    theme_cowplot() +
+    xlab(paste0("PC1 (", signif((axes$PC1) * 100, 4), "%)")) + 
+    ylab(paste0("PC2 (", signif((axes$PC2) * 100, 4), "%)")) +
+    theme(
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      legend.title = element_blank(),
+      legend.text = element_text(size = 16),
+      axis.text = element_text(size = 16),
+      legend.position = "none"
+    ) +
+    stat_ellipse(type = "norm")
+
+  # Return the plot
+  return(plot)
+}
+
+
+
+
+```
+
+# Plot by Sample Type, one panel for each uni_tx (RPCA)
+Additional File 16
+
+```{r}
+
+
+
+plot_uwm<- create_rpca_plot(
+  ordination_path = "../data/qiime_gemelli/trimmed_objects/uw_match/gemelli/rpca_ordination.qza",
+  metadata_filter = "UW-match",
+  plot_title = "RPCA - UW-match"
+)
+
+plot_uwMis <- create_rpca_plot(
+  ordination_path = "../data/qiime_gemelli/trimmed_objects/uw_mismatch/gemelli/rpca_ordination.qza",
+  metadata_filter = "UW-mismatch",
+  plot_title = "RPCA - UW-mismatch"
+)
+
+plot_lstmM<- create_rpca_plot(
+  ordination_path = "../data/qiime_gemelli/trimmed_objects/lstm_match/gemelli/rpca_ordination.qza",
+  metadata_filter = "LSTM-match",
+  plot_title = "RPCA - LSTM-match"
+)
+
+
+plot_lstmMis <- create_rpca_plot(
+  ordination_path = "../data/qiime_gemelli/trimmed_objects/lstm_mismatch/gemelli/rpca_ordination.qza",
+  metadata_filter = "LSTM-mismatch",
+  plot_title = "RPCA - LSTM-mismatch"
+)
+
+ggarrange(plot_uwm, plot_lstmM, plot_uwMis, plot_lstmMis)
+#ggsave("./plots/RPCA_uni_tx_sample_type.pdf", height=6, width=9, device="pdf") 
+
+#double check that the colors are approrpiately labeled 
+#adult = light blue, water = dark blue, larvae = green
+plot_uwm + aes(label = sample_type) + geom_text()
+plot_uwMis + aes(label = sample_type) + geom_text()
+plot_lstmM + aes(label = sample_type) + geom_text()
+plot_lstmMis +  aes(label = sample_type) + geom_text()
+
+
+```
+
+# Plot by Sample Type, one panel for each uni_tx (phylo-RPCA)
+Additional File 17
+
+```{r}
+
+
+plot_phylo_uwm<- create_rpca_plot(
+  ordination_path = "../data/qiime_gemelli/trimmed_objects/uw_match/gemelli/phylo_rpca_ordination.qza",
+  metadata_filter = "UW-match",
+  plot_title = "phylo-RPCA - UW-match"
+)
+
+plot_phylo_uwMis <- create_rpca_plot(
+  ordination_path = "../data/qiime_gemelli/trimmed_objects/uw_mismatch/gemelli/phylo_rpca_ordination.qza",
+  metadata_filter = "UW-mismatch",
+  plot_title = "phylo-RPCA - UW-mismatch"
+)
+
+plot_phylo_lstmM<- create_rpca_plot(
+  ordination_path = "../data/qiime_gemelli/trimmed_objects/lstm_match/gemelli/phylo_rpca_ordination.qza",
+  metadata_filter = "LSTM-match",
+  plot_title = "phylo-RPCA - LSTM-match"
+)
+
+
+plot_phylo_lstmMis <- create_rpca_plot(
+  ordination_path = "../data/qiime_gemelli/trimmed_objects/lstm_mismatch/gemelli/phylo_rpca_ordination.qza",
+  metadata_filter = "LSTM-mismatch",
+  plot_title = "phylo-RPCA - LSTM-mismatch"
+)
+
+ggarrange(plot_phylo_uwm, plot_phylo_lstmM, plot_phylo_uwMis, plot_phylo_lstmMis)
+#ggsave("./plots/phylo_RPCA_uni_tx_sample_type.pdf", height=6, width=9, device="pdf") 
+
+
+
+#double check that the colors match the sampletype I expect - yep!
+plot_phylo_uwm+ aes(label = sample_type) + geom_text()
+plot_phylo_uwMis + aes(label = sample_type) + geom_text()
+plot_phylo_lstmM+ aes(label = sample_type) + geom_text()
+plot_phylo_lstmMis+ aes(label = sample_type) + geom_text()
+
+```
+
+
+#stats - sample type, RPCA 
+Additional File 16 + 17 stats
+
+
+```{r}
+
+
+
+
+# Function to perform pairwise Adonis test
+run_pairwise_adonis <- function(distance_path, metadata_filter, grouping_var) {
+  # Read the distance object
+  distance_obj <- read_qza(distance_path)
+  distance_matrix <- distance_obj$data
+
+  # Convert distance matrix to a data frame
+  distance_df <- distance_matrix %>%
+    as.matrix() %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "SampleID")
+
+  # Filter metadata
+  metadata_filtered <- met_all %>%
+    mutate(SampleID = sample_id) %>%
+    filter(uni_tx == metadata_filter)
+
+  # Join distance data with filtered metadata
+  joined_data <- inner_join(distance_df, metadata_filtered, by = "SampleID")
+
+  # Perform global Adonis test
+  global_adonis <- adonis2(as.dist(distance_matrix) ~ joined_data[[grouping_var]])
+  global_p_value <- global_adonis$`Pr(>F)`[1]
+
+  # Check if global Adonis test is significant
+  if (!is.na(global_p_value) && global_p_value >= 0.05) {
+    return(paste("adonis2 found p =", signif(global_p_value, 4)))
+  }
+
+  # Perform pairwise Adonis test
+  adonis_results <- pairwise.adonis(joined_data[ ,2:length(distance_df)],
+                                    joined_data[[grouping_var]],
+                                    p.adjust.m = "bonferroni"
+                                    )
+  # Return results
+  return(list(global_adonis,adonis_results))
+}
+
+
+
+####################
+#rpca PERMANOVA
+####################
+
+
+
+pwa_uwm <- run_pairwise_adonis(
+  distance_path = "../data/qiime_gemelli/trimmed_objects/uw_match/gemelli/rpca_distance.qza",
+  metadata_filter = "UW-match",
+  grouping_var = "sample_type"
+)
+#water + larvae the same, both diff from adults 
+
+
+pwa_uwmis <- run_pairwise_adonis(
+  distance_path = "../data/qiime_gemelli/trimmed_objects/uw_mismatch/gemelli/rpca_distance.qza",
+  metadata_filter = "UW-mismatch",
+  grouping_var = "sample_type"
+)
+#all significantly different, water + larvae p = 0.006
+
+
+pwa_lstmM <- run_pairwise_adonis(
+  distance_path = "../data/qiime_gemelli/trimmed_objects/lstm_match/gemelli/rpca_distance.qza",
+  metadata_filter = "LSTM-match",
+  grouping_var = "sample_type"
+)
+#adult vs larvae is only significant difference, p = 0.003. 
+#adults vs water is p = 0.072
+
+
+pwa_lstmMis <- run_pairwise_adonis(
+  distance_path = "../data/qiime_gemelli/trimmed_objects/lstm_mismatch/gemelli/rpca_distance.qza",
+  metadata_filter = "LSTM-mismatch",
+  grouping_var = "sample_type"
+)
+# adult and water dif, adult and larvae dif, water and larvae same. 
+
+
+
+####################
+#phylo-rpca PERMANOVA
+####################
+
+pwa_uwm_phylo <- run_pairwise_adonis(
+  distance_path = "../data/qiime_gemelli/trimmed_objects/uw_match/gemelli/phylo_distance.qza",
+  metadata_filter = "UW-match",
+  grouping_var = "sample_type"
+)
+
+# adults different from water and larvae, water v larvae = p = 0.144
+
+pwa_uwmis_phylo <- run_pairwise_adonis(
+  distance_path = "../data/qiime_gemelli/trimmed_objects/uw_mismatch/gemelli/phylo_distance.qza",
+  metadata_filter = "UW-mismatch",
+  grouping_var = "sample_type"
+)
+
+# adults different from water and larvae, water v larvae = p = 0.291
+
+
+pwa_lstmM_phylo <- run_pairwise_adonis(
+  distance_path = "../data/qiime_gemelli/trimmed_objects/lstm_match/gemelli/phylo_distance.qza",
+  metadata_filter = "LSTM-match",
+  grouping_var = "sample_type"
+)
+
+#adults vs water is different, adult vs larvae = 0.249, larvae vs water p = 1.00
+
+pwa_lstmMis_phylo <- run_pairwise_adonis(
+  distance_path = "../data/qiime_gemelli/trimmed_objects/lstm_mismatch/gemelli/phylo_distance.qza",
+  metadata_filter = "LSTM-mismatch",
+  grouping_var = "sample_type"
+)
+#adult dif from water and larvae, larvae and water are the same. 
+
+
+
+
+
+```
+
+
+
+#Next - Boxplots! 
+
+
+
+## Which adult samples are closest to the donor pool they recieved (boxplots)? 
+
+
+Using the distance matrix with adults and donor pools from gemelli 
+
+
+Plot generated here is a preview - not included in manuscript
+
+```{r}
+#----- PAIRWISE DISTANCE BOXPLOTS USING phylo-RPCA  DISTANCES -----#
+
+set.seed(123456)
+
+
+#first, melt the distance matrix so that it's long/tidy data with Var1 and Var2 being column names for the two libraries being compared, and 
+#"value" being a column of aitchison distance between the two samples. 
+
+prpca_Dist_melt <- subset(reshape2::melt(as.matrix(phylo_rpcadist), 
+                                                value.name = "value"),
+                                 				value != 0)
+
+
+
+metadat_Var1 <- metadat %>% rename(Var1 = "sample-id")
+
+#join the melted df with metadata
+longdist <- prpca_Dist_melt %>% full_join(metadat_Var1, by = "Var1") %>%
+           dplyr::select(Var1, Var2, value, sample_type, uni_tx, timepoint, stock_origin, uni, tx)
+
+#rename metadata again, and join again by Var2 this time (need to have metadata for both sample being compared)
+metadat_Var2 <- metadat %>% rename(Var2 = "sample-id")
+longdist <- longdist %>% full_join(metadat_Var2, by = "Var2") %>% dplyr::select(Var1, Var2, value, sample_type.x, sample_type.y, uni_tx.x, uni_tx.y, timepoint.x, timepoint.y, stock_origin.x, stock_origin.y, uni.x, uni.y, tx.x, tx.y)
+head(longdist)
+
+
+#rename Var1 and Var2 to Var.x and Var.y
+longdist <- longdist %>% rename(Var.x = Var1, Var.y = Var2) #and it's done!! 
+
+#now subset to just the UW homogenate, UW-match, and LSTM-mismatch 
+#Should be able to subset by stock_origin 
+
+longdist_UWstock <- filter(longdist, stock_origin.x == "UW" & stock_origin.y == "UW")
+
+# create new column to sort out just the desired pairs 
+#THEN, filter for just the pairs we want (homogenate - homogneate or homogenate - adult pairs)
+
+longdist_filtered <- longdist_UWstock %>%  mutate(UniqueSamtype = paste(sample_type.x, sample_type.y, sep = "_")) %>% 
+        filter(UniqueSamtype  == "homogenate_homogenate" |
+              UniqueSamtype  == "adult_homogenate" |
+              UniqueSamtype  == "homogenate_adult")
+
+
+
+#next, make a new column that defines the "lumped" groups we want to graph together - notably compare within UW homogenate, between homogenate and UW-match, and between homogenate and LSTM-mismatch. 
+
+
+LumpConditions_UW <- function(df) {
+  df <- df %>%
+    mutate(
+      graph_var = case_when(
+        UniqueSamtype == "homogenate_homogenate" ~ "b/w UW Homogenate",
+        uni_tx.x == "UW-match" | uni_tx.y == "UW-match" ~ "UW Homogenate to UW-match",
+        TRUE ~ "UW Homogenate to LSTM-mismatch"
+      )
+    )
+  return(df)
+}
+
+
+
+graphMe <- LumpConditions_UW(longdist_filtered)
+DFNoDupes_UW <- graphMe[!duplicated(graphMe$value), ] #get rid of duplicate values - goes from 17080 to 8540 observations which is exactly half!
+
+
+
+
+plot <- DFNoDupes_UW %>%
+  ggplot+
+  geom_boxplot(outlier.shape = NA) +
+  aes(x=graph_var, y=value, fill=graph_var) +
+  scale_fill_manual(values = c("#D0352B","#3C76B0", "#BBDE94"))+
+  coord_cartesian(ylim=c(0,5)) + # adjust y-axis
+  xlab("Comparisons") +
+  ylab("Beta-diversity Distance: phyloRPCA")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("UW homogenate comparisons")
+
+plot
+
+#On average, UW-match adult samples are closer to donor pool than LSTM-mismatch samples are. 
+
+```
+
+
+
+# Repeat the above, but compare to LSTM homogenate (phylo-rpca)
+
+Also not in manuscript 
+
+
+```{r}
+#now subset to just the UW homogenate, UW-match, and LSTM-mismatch 
+#Subset by stock_origin 
+
+longdist_LSTMstock <- filter(longdist, stock_origin.x == "LSTM" & stock_origin.y == "LSTM")
+
+# create new column to sort out just the desired pairs 
+#THEN, filter for just the pairs we want (homogenate - homogneate or homogenate - adult pairs)
+
+longdist_filtered_LSTM <- longdist_LSTMstock %>%  mutate(UniqueSamtype = paste(sample_type.x, sample_type.y, sep = "_")) %>% 
+        filter(UniqueSamtype  == "homogenate_homogenate" |
+              UniqueSamtype  == "adult_homogenate" |
+              UniqueSamtype  == "homogenate_adult")
+
+
+
+#next, make a new column that defines the "lumped" groups we want to graph together - notably compare within UW homogenate, between homogenate and UW-match, and between homogenate and LSTM-mismatch. 
+
+LumpConditions_LSTM <- function(df) {
+  df <- df %>%
+    mutate(
+      graph_var = case_when(
+        UniqueSamtype == "homogenate_homogenate" ~ "b/w LSTM Homogenate",
+        uni_tx.x == "LSTM-match" | uni_tx.y == "LSTM-match" ~ "LSTM Homogenate to LSTM-match",
+        TRUE ~ "LSTM Homogenate to UW-mismatch"
+      )
+    )
+  return(df)
+}
+
+
+
+graphMe_L <- LumpConditions_LSTM(longdist_filtered_LSTM)
+DFNoDupes_LSTM <- graphMe_L[!duplicated(graphMe_L$value), ] #get rid of duplicate values - goes from 17080 to 8540 observations which is exactly half!
+
+
+
+
+plot2 <- DFNoDupes_LSTM %>%
+  ggplot+
+  geom_boxplot(outlier.shape = NA) +
+  aes(x=graph_var, y=value, fill=graph_var) +
+  scale_fill_manual(values = c("#ED9F9C","#549E3F", "#AECDE1"))+
+  coord_cartesian(ylim=c(0,5)) + # adjust y-axis
+  xlab("Comparisons") +
+  ylab("Beta-Diversity Distance: phylo-RPCA")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("LSTM homogenate comparisons")
+#hm - looks like HOmogenate to LSTM-mismatch is lower than homogneate to UW-match? surprised by this 
+
+plot2
+
+
+
+ggarrange(plot,plot2)
+#wow, these colors are terrible 
+
+#recall the question:
+#Are UW or LSTM mosquitoes farther from their original homogenate? 
+
+#Seems like UW-match is closer to its homogenate 
+
+
+```
+
+
+
+
+
+
+
+# Phylo-rpca - Just the adults, no homogenate, distance from donor pool by uni_tx
+
+This is the version I'll use in manuscript - Figure 4D
+
+```{r}
+DFNoDupes_UW$graph_var <- as.factor(DFNoDupes_UW$graph_var)
+DFNoDupes_LSTM$graph_var <- as.factor(DFNoDupes_LSTM$graph_var)
+all_dist_combos <- bind_rows(DFNoDupes_LSTM, DFNoDupes_UW)
+#ok make a version with just the adults 
+
+all_dist_combos_adults <- filter(all_dist_combos, UniqueSamtype != "homogenate_homogenate" ) #15,020 samples, match checks out
+
+
+plot_adults <- all_dist_combos_adults %>%
+  ggplot+
+  geom_boxplot(outlier.shape = NA) +
+  aes(x=graph_var, y=value, fill=graph_var) +
+  scale_fill_manual(values = c("#AECDE1","#549E3F", "#3C76B0", "#BBDE94"))+
+  coord_cartesian(ylim=c(0,5.5)) + # adjust y-axis to match RPCA
+  xlab("Comparisons") +
+  ylab("Beta-diversity Distance: phylo-RPCA")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("Adults compared to donor pool (phylo-RPCA)")
+
+plot_adults
+
+#ggsave("./plots/phylo_RPCA_distance_adults.pdf", height=7, width=4, device="pdf") 
+
+
+underscores_for_stats_phylo_rpca <- all_dist_combos_adults
+underscores_for_stats_phylo_rpca$graph_var <- gsub("-", "_", underscores_for_stats_phylo_rpca$graph_var)
+
+anova_adults <- aov(lm(value ~ graph_var, data = underscores_for_stats_phylo_rpca))
+summary(anova_adults) #p = < 2e-16 ***, proceed
+
+tukey <- TukeyHSD(anova_adults, conf.level = 0.95) # 
+multcompLetters4(anova_adults, tukey)
+
+#try a model with uni, tx, and time point 
+#maybe if it's homogenate_adult>> then use teh .y vale for pasting/mutating 
+#and if it's adult_homogenate, use teh y value for pasting 
+
+
+#LSTM Homogenate to UW_mismatch  LSTM Homogenate to LSTM_match UW Homogenate to LSTM_mismatch      UW Homogenate to UW_match 
+#                           "a"                            "b"                            "c"                            "d" 
+
+
+
+
+#generate new df to use for linear model 
+head(all_dist_combos_adults)
+
+df <- all_dist_combos_adults %>%
+  #mutate(uni = paste0(uni.x, uni.y)) %>%
+  mutate(uni_tx = paste0(uni_tx.x,uni_tx.y)) %>%
+  mutate(timepoint = paste0(timepoint.x, timepoint.y)) %>%
+  mutate(tx = paste0(tx.x, tx.y)) %>% 
+  mutate(uni = case_when(
+    UniqueSamtype == "adult_homogenate" ~ uni.x,
+      TRUE ~ uni.y ))
+
+head(df)
+
+
+
+
+```
+
+
+
+
+#phylo-rpca - distance from homogenate by TIMEPOINT (boxplots)
+
+Additional File 4
+
+```{r}
+
+#must run chunks above to have correct df 
+
+
+#note that this compresses uni_tx together to see any broad differences across time points in distance from homogenate
+anova_time <- aov(lm(value ~ timepoint, data = df))
+summary(anova_time) # p < 2e-16, proceed
+tukey_time <- TukeyHSD(anova_time, conf.level = 0.95) 
+#interesting - 24h same as 0h, all others are different 
+multcompLetters4(anova_time, tukey_time)
+
+plot_time <- df %>%
+  ggplot+
+  geom_boxplot(outlier.shape = NA) +
+  aes(x=timepoint, y=value, fill=timepoint) +
+  #scale_fill_manual(values = c("#AECDE1","#549E3F", "#3C76B0", "#BBDE94"))+
+  coord_cartesian(ylim=c(0,5.5)) + # adjust y-axis to match RPCA
+  xlab("Comparisons") +
+  ylab("Beta-diversity Distance: phylo-RPCA")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("Adults compared to donor pool (phylo-RPCA)")
+
+plot_time
+
+#whoah! wtf, this is the first clear signal that there's an increase in distance from donor pool as time progresses. 
+#note that this collapses variation. Let's look at just UW-match and LSTM-match 
+#Wonder if this holds true for rpca and phylo-rpca, and what it means if not!!
+
+
+
+head(df)
+
+df_UWM <- filter(df, uni_tx == "UW-match")
+
+#stats
+anova_time_UWM <- aov(lm(value ~ timepoint, data = df_UWM))
+summary(anova_time_UWM) # p < 2e-16, proceed
+tukey_time_UWM <- TukeyHSD(anova_time_UWM, conf.level = 0.95)
+#ok this one deserves letters 
+multcompLetters4(anova_time_UWM, tukey_time_UWM)
+#d10 24h mo6 d16  0h d30 
+#"a" "a" "a" "b" "c" "d" 
+#aligns with other analyses that there is NOT a consistent divergence from donor pool over time, but what about LSTM? 
+
+#mo6-0h   0.27732971  0.20067296  0.35398646 0.0000000
+
+#plot
+plot_time_UW <- df_UWM %>%
+  ggplot+
+  geom_boxplot(outlier.shape = NA) +
+  aes(x=timepoint, y=value, fill=timepoint) +
+  scale_fill_manual(values = c("#E5F6FF", "#B5DEFF", "#85C6FF", "#559EFF", "#2F74F5", "#153FBF"))+
+  coord_cartesian(ylim=c(0,4.5)) + # adjust y-axis to match other panels 
+  #xlab("Comparisons") +
+  ylab("Beta-diversity Distance: phylo-RPCA")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("UW-match Adults compared to donor pool (phylo-RPCA)")
+
+
+
+
+
+#LSTM 
+df_LSTMM <- filter(df, uni_tx == "LSTM-match")
+
+anova_time_LSTMM <- aov(lm(value ~ timepoint, data = df_LSTMM))
+summary(anova_time_LSTMM) # p < 2e-16, proceed
+tukey_time_LSTMM <- TukeyHSD(anova_time_LSTMM, conf.level = 0.95)
+#ok this one deserves lettters 
+multcompLetters4(anova_time_LSTMM, tukey_time_LSTMM)
+#mo6 d30 d16 d10 24h  0h 
+#"a" "b" "c" "d" "e" "e" 
+#
+
+#0h vs mo6 
+            # diff      lwr           upr       p adj
+#mo6-0h   0.71351845  0.59749688 0.82954003 0.0000000
+
+
+#plot
+plot_time_LSTM <- df_LSTMM %>%
+  ggplot+
+  geom_boxplot(outlier.shape = NA) +
+  aes(x=timepoint, y=value, fill=timepoint) +
+  scale_fill_manual(values = c("#E5F6FF", "#B5DEFF", "#85C6FF", "#559EFF", "#2F74F5", "#153FBF"))+
+  coord_cartesian(ylim=c(0,4.5)) + # adjust y-axis to match other panels
+  #xlab("Comparisons") +
+  ylab("Beta-diversity Distance: phylo-RPCA")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("LSTM-match Adults compared to donor pool (phylo-RPCA)")
+
+
+
+
+
+
+
+ggarrange(plot_time_LSTM,plot_time_UW)
+#ggsave("./plots/phylo-rpca-boxplots-timepoint.pdf", height=4, width=7, device="pdf") 
+
+
+#conclusion -LSTM-match consistently moves farther for donor homogenate as time progresses, while UW-match does not have this consistent pattern. 
+#also notable from the graph - LSTM have wider spread. 
+
+
+
+
+```
+
+
+
+
+
+#RPCA distance boxplots and stats (boxplots)
+
+Figure 4C
+
+
+```{r}
+
+rpcadist <- read_qza("../data/qiime_gemelli/adults_and_donors/gemelli/rpca_distance.qza")
+rpcadist <- rpcadist$data
+
+
+rpca_Dist_melt <- subset(reshape2::melt(as.matrix(rpcadist), 
+                                                value.name = "value"),
+                                 				value != 0)
+
+
+head(metadat)
+
+
+metadat_Var1 <- metadat %>% rename(Var1 = "sample-id")
+
+#join the melted df with metadata - will give metadata info on var1
+longdist_rpca <- rpca_Dist_melt %>% full_join(metadat_Var1, by = "Var1") %>%
+           select(Var1, Var2, value, sample_type, uni_tx, timepoint, stock_origin, uni, tx)
+
+#rename metadata again, and join again by Var2 this time (need to have metadata for both sample being compared)
+metadat_Var2 <- metadat %>% rename(Var2 = "sample-id")
+longdist_rpca <- longdist_rpca %>% full_join(metadat_Var2, by = "Var2") %>% select(Var1, Var2, value, sample_type.x, sample_type.y, uni_tx.x, uni_tx.y, timepoint.x, timepoint.y, stock_origin.x, stock_origin.y, uni.x, uni.y, tx.x, tx.y)
+
+
+
+#rename Var1 and Var2 to Var.x and Var.y
+longdist_rpca <- longdist_rpca %>% rename(Var.x = Var1, Var.y = Var2) #and it's done!! 
+
+
+
+# create new column to sort out just the desired pairs 
+#THEN, filter for just the pairs we want (homogenate - homogneate or homogenate - adult pairs)
+
+
+
+longdist_filtered_rpca <- longdist_rpca %>%  mutate(UniqueSamtype = paste(sample_type.x, sample_type.y, sep = "_")) %>% 
+        filter(UniqueSamtype  == "homogenate_homogenate" |
+              UniqueSamtype  == "adult_homogenate" |
+              UniqueSamtype  == "homogenate_adult")
+
+
+longdist_LSTM_rpca <- filter(longdist_filtered_rpca, stock_origin.x == "LSTM" & stock_origin.y == "LSTM")
+longdist_UW_rpca <- filter(longdist_filtered_rpca, stock_origin.x == "UW" & stock_origin.y == "UW")
+
+
+
+
+#next, make a new column that defines the "lumped" groups we want to graph together - notably compare within UW homogenate, between homogenate and UW-match, and between homogenate and LSTM-mismatch. 
+
+
+
+
+graphMe_rpca_UW <- LumpConditions_UW(longdist_UW_rpca)
+graphMe_rpca_LSTM <- LumpConditions_LSTM(longdist_LSTM_rpca)
+
+DFNoDupes_UW_rpca <- graphMe_rpca_UW[!duplicated(graphMe_rpca_UW$value), ]
+DFNoDupes_LSTM_rpca <- graphMe_rpca_LSTM[!duplicated(graphMe_rpca_LSTM$value), ]#get rid of duplicate values
+
+
+
+
+
+all_dist_combos_rpca <- bind_rows(DFNoDupes_UW_rpca, DFNoDupes_LSTM_rpca)
+
+plot <- all_dist_combos_rpca %>%
+  ggplot+
+  geom_boxplot(outlier.shape = NA) +
+  aes(x=graph_var, y=value, fill=graph_var) +
+  #scale_fill_manual(values = c("#D0352B","#3C76B0", "#BBDE94", "#000000"))+
+  #coord_cartesian(ylim=c(0,1)) + # adjust y-axis
+  xlab("Comparisons") +
+  ylab("Beta-diversity Distance: RPCA")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("all homogenate comparisons")
+#hm - looks like HOmogenate to LSTM-mismatch is lower than homogenate to UW-match? surprised by this 
+
+plot
+
+
+#now remove the homogenate samples
+all_dist_combos_adults_rpca <- filter(all_dist_combos_rpca, UniqueSamtype != "homogenate_homogenate" )
+
+plot5 <- all_dist_combos_adults_rpca %>%
+  ggplot+
+  geom_boxplot(outlier.shape = NA) +
+  aes(x=graph_var, y=value, fill=graph_var) +
+  scale_fill_manual(values = c("#AECDE1","#549E3F", "#3C76B0", "#BBDE94"))+
+  coord_cartesian(ylim=c(0,5.5)) + # adjust y-axis
+  xlab("Comparisons") +
+  ylab("Beta-diversity Distance: RPCA")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("Adults compared to homogenate (RPCA)")
+#hm - looks like HOmogenate to LSTM-mismatch is lower than homogneate to UW-match? surprised by this 
+
+plot5
+
+
+#ggsave("./plots/RPCA_distance_adults.pdf", height=7, width=4, device="pdf") 
+
+
+###########stats 
+
+
+underscores_for_stats_rpca <- all_dist_combos_adults_rpca
+underscores_for_stats_rpca$graph_var <- gsub("-", "_", underscores_for_stats_rpca$graph_var)
+
+anova_adults2 <- aov(lm(value ~ graph_var, data = underscores_for_stats_rpca))
+summary(anova_adults2) #p = < 2e-16 ***, proceed
+
+
+tukey <- TukeyHSD(anova_adults2, conf.level = 0.95) # All essentially zero, LSTM-match adn UW-mismatch are the only ones that have a p adj not 0  (still 1e-07 though )
+multcompLetters4(anova_adults2,tukey)
+#UW Homogenate to LSTM_mismatch      UW Homogenate to UW_match  LSTM Homogenate to LSTM_match LSTM Homogenate to UW_mismatch 
+#                           "a"                            "b"                            "c"                            "d" 
+
+
+
+```
+
+
+
+#RPCA - distance from homogenate - by TIMEPOINT (boxplots)
+
+Additional File 4
+
+```{r}
+
+df_rpca <- all_dist_combos_adults_rpca %>%
+  #mutate(uni = paste0(uni.x, uni.y)) %>%
+  mutate(uni_tx = paste0(uni_tx.x,uni_tx.y)) %>%
+  mutate(timepoint = paste0(timepoint.x, timepoint.y)) %>%
+  mutate(tx = paste0(tx.x, tx.y)) %>% 
+  mutate(uni = case_when(
+    UniqueSamtype == "adult_homogenate" ~ uni.x,
+      TRUE ~ uni.y ))
+
+
+
+
+
+#must run chunk above to have correct df_rpca 
+
+
+#note that this compresses uni_tx together to see any broad differences across time points in distance from homogenate
+anova_time <- aov(lm(value ~ timepoint, data = df_rpca))
+summary(anova_time) # p < 2e-16, proceed
+tukey_time <- TukeyHSD(anova_time, conf.level = 0.95) 
+multcompLetters4(anova_time, tukey_time)
+#d30 mo6 24h d16  0h d10 
+#"a" "b" "c" "d" "d" "d"
+#interesting - unlike the phylo-rpca, no overall trend away from donor pool over time 
+#d30 is the farthest from donor pool, then mo6, then 24h 
+
+
+
+plot_time <- df_rpca %>%
+  ggplot+
+  geom_boxplot(outlier.shape = NA) +
+  aes(x=timepoint, y=value, fill=timepoint) +
+  #scale_fill_manual(values = c("#AECDE1","#549E3F", "#3C76B0", "#BBDE94"))+
+  coord_cartesian(ylim=c(0,5.5)) + # adjust y-axis to match RPCA
+  xlab("Comparisons") +
+  ylab("Beta-diversity Distance: RPCA")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("Adults compared to donor pool (RPCA)")
+
+plot_time
+
+#whoah! wtf, this is the first clear signal that there's an increase in distance from donor pool as time progresses. 
+#note that this collapses variation. Let's look at just UW-match and LSTM-match 
+#Wonder if this holds true for rpca and RPCA, and what it means if not!!
+
+
+
+
+
+df_rpca_UWM <- filter(df_rpca, uni_tx == "UW-match")
+
+#stats
+anova_time_UWM <- aov(lm(value ~ timepoint, data = df_rpca_UWM))
+summary(anova_time_UWM) # p < 2e-16, proceed
+tukey_time_UWM <- TukeyHSD(anova_time_UWM, conf.level = 0.95)
+#ok this one deserves lettters 
+multcompLetters4(anova_time_UWM, tukey_time_UWM)
+#d30 mo6 24h d10  0h d16 
+#"a" "b" "c" "d" "e" "f" 
+#aligns with other analyses that there is NOT a consistent divergence from donor pool over time, but what about LSTM? 
+
+
+
+#plot
+plot_time_UW <- df_rpca_UWM %>%
+  ggplot+
+  geom_boxplot(outlier.shape = NA) +
+  aes(x=timepoint, y=value, fill=timepoint) +
+  scale_fill_manual(values = c("#E5F6FF", "#B5DEFF", "#85C6FF", "#559EFF", "#2F74F5", "#153FBF"))+
+  coord_cartesian(ylim=c(0,4.5)) + # adjust y-axis to match other panels 
+  #xlab("Comparisons") +
+  ylab("Beta-diversity Distance: RPCA")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("UW-match Adults compared to donor pool (RPCA)")
+
+
+
+
+
+#LSTM 
+df_rpca_LSTMM <- filter(df_rpca, uni_tx == "LSTM-match")
+
+anova_time_LSTMM <- aov(lm(value ~ timepoint, data = df_rpca_LSTMM))
+summary(anova_time_LSTMM) # p < 2e-16, proceed
+tukey_time_LSTMM <- TukeyHSD(anova_time_LSTMM, conf.level = 0.95)
+#ok this one deserves lettters 
+multcompLetters4(anova_time_LSTMM, tukey_time_LSTMM)
+# mo6  d30   0h  24h  d10  d16 
+# "a"  "b"  "c"  "d" "de"  "e" 
+#mo6 is def the farthest away 
+#if antyhing, this one is U-shaped. Intersting to contrast with phylo-RPCA
+
+
+
+#plot
+plot_time_LSTM <- df_rpca_LSTMM %>%
+  ggplot+
+  geom_boxplot(outlier.shape = NA) +
+  aes(x=timepoint, y=value, fill=timepoint) +
+  scale_fill_manual(values = c("#E5F6FF", "#B5DEFF", "#85C6FF", "#559EFF", "#2F74F5", "#153FBF"))+
+  coord_cartesian(ylim=c(0,4.5)) + # adjust y-axis to match other panels
+  #xlab("Comparisons") +
+  ylab("Beta-diversity Distance: RPCA")  +
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle=45, vjust=0.5)) +
+  #geom_jitter(width = 0.2, size=1.5) +
+  theme(legend.position="none") +  #remove the legend as it isn't needed
+  ggtitle("LSTM-match Adults compared to donor pool (RPCA)")
+
+
+
+
+
+
+
+ggarrange(plot_time_LSTM,plot_time_UW)
+#ggsave("./plots/rpca-boxplots-timepoint.pdf", height=4, width=7, device="pdf") 
+
+
+
+
+```
+
+# Which factors contribute to beta div of adult samples??
+
+
+### Get  RPCA + phylo-RPCA dist with just the adult samples (will need qiime for this) - export a trimmed metadata table, import the distance object in code chunks below 
+
+
+
+```{r}
+
+######### EXPORT 
+ps.1042 <- prune_samples(sample_sums(ps.filled) > 1041, ps.filled ) %>% prune_taxa(taxa_sums(.) >0,.) #onlydo the samples that we also used for alpha div (DONT" WORRY, THIS IS NOT RAREFIED!!)
+ps.adult <- subset_samples(ps.1042, sample_type == "adult") %>% prune_taxa(taxa_sums(.)>0,.) #4005, 462 samples
+
+otu.df <- data.frame(otu_table(ps.adult)) #will need this for PAM clustering later
+
+metadat <- sample_data(ps.adult) %>%
+  data.frame() %>%  # Strip sample_data attributes completely
+  rownames_to_column("sample-id") #rename for qiime 
+
+write.table(metadat, "../data/qiime_gemelli/all_adults/adult_metadata.tsv", quote=FALSE, sep='\t', row.names = FALSE)
+######### 
+
+```
+
+
+# PERMANOVA with nesting - RPCA
+
+Give this a try to compare the effect size of treatment (uni_tx) versus replicate (flaskID)
+
+Additional File 5, sheet 3 
+
+```{r}
+
+rpcadist <- read_qza("../data/qiime_gemelli/all_adults/gemelli/rpca_distance.qza")
+rpcadist <- rpcadist$data
+
+#need a metadat obj
+metadat_a <- sample_data(ps.filled) %>% as.matrix() %>% data.frame() %>% filter(sample_type == "adult")
+metadat_a <- metadat_a %>% 
+  mutate(SampleID = sample_id) #fix sample_id vs SampleID differene before merging
+
+
+
+#To ensure that I'm correctly pairing the sample_type with the order of the dist object,
+#Make a df that joins the dist and the unordered metadata object 
+rpcadist_df <- rpcadist %>% as.matrix() %>% as.data.frame() 
+rpcadist_df <- cbind(rownames(rpcadist_df), data.frame(rpcadist_df, row.names =NULL)) 
+
+colnames(rpcadist_df)[1] <- "SampleID"
+joined <- inner_join(rpcadist_df,metadat_a, by = "SampleID")
+
+
+#### ok, now here's where we make the relevant columns 
+
+colnames(joined)
+
+# new columns - first one that encompasses all adults in a given combo of timepoitn + treatment
+joined <- mutate(joined, timepoint_uni_tx = paste0(timepoint, "_", uni_tx))
+
+
+#next, one that uniquely identifies each flask 
+#Define a function to extract characters from the right side of a string 
+substrRight <- function(x, n){
+  substr(x, nchar(x)-n+1, nchar(x))
+}
+
+
+joined <- mutate(joined, flaskID = paste(timepoint, uni_tx, substrRight(joined$sorting_var, 1), sep = "_"))
+joined$flaskID  <- sub("-", "_", joined$flaskID)
+
+#make into vectors 
+joined$uni_tx <- as.vector(joined$uni_tx)
+joined$flaskID <- as.vector(joined$flaskID)
+
+adonis2(rpcadist ~ joined$uni_tx* joined$timepoint/ joined$flaskID , permutations = 999) # the slash should mean nesting each flask within uni_tx
+
+#for only uni_tx and flaskID (not used in manuscript, just to compare what it looks like without timepoint added)  
+#                               DF    sumSq    R2    F      P
+# joined$uni_tx                  3   104.57 0.11572 33.1282  0.001 ***
+# joined$uni_tx:joined$flaskID  67   469.75 0.51984  6.6637  0.001 ***
+# Residual                     313   329.32 0.36444                   
+# Total                        383   903.65 1.00000                   
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#and if we add in timepoint (what actaully ran above / what we used in manuscript) - explains a significant amount, and so does the interaction! Some of what was getting attributed to flask was actaully a timepoint effect
+# 
+# adonis2(formula = rpcadist ~ joined$uni_tx * joined$timepoint/joined$flaskID, permutations = 999)
+#                                                Df SumOfSqs      R2       F Pr(>F)    
+# joined$uni_tx                                   3   104.57 0.11572 33.1282  0.001 ***
+# joined$timepoint                                5   107.54 0.11900 20.4411  0.001 ***
+# joined$uni_tx:joined$timepoint                  9   162.95 0.18032 17.2075  0.001 ***
+# joined$uni_tx:joined$timepoint:joined$flaskID  53   199.27 0.22052  3.5735  0.001 ***
+# Residual                                      313   329.32 0.36444                   
+# Total                                         383   903.65 1.00000    
+
+
+#how's the dispersion looking? 
+
+anova(betadisper(rpcadist, joined$uni_tx)) # sig
+anova(betadisper(rpcadist, joined$timepoint)) #Not sig! 
+anova(betadisper(rpcadist, joined$flaskID)) #this is signiicant 
+
+
+
+```
+
+
+# PERMANOVA with nesting - phylo-RPCA
+
+```{r}
+
+phylo_rpcadist <- read_qza("../data/qiime_gemelli/all_adults/gemelli/phylo_distance.qza")
+phylo_rpcadist <- phylo_rpcadist$data
+
+#To ensure that I'm correctly pairing the sample_type with the order of the dist object,
+#Make a df that joins the dist and the unordered metadata object 
+phylo_rpcadist_df <- phylo_rpcadist %>% as.matrix() %>% as.data.frame() 
+phylo_rpcadist_df <- cbind(rownames(phylo_rpcadist_df), data.frame(phylo_rpcadist_df, row.names =NULL)) 
+
+colnames(phylo_rpcadist_df)[1] <- "SampleID"
+joined_phylo <- inner_join(phylo_rpcadist_df,metadat_a, by = "SampleID")
+
+
+
+
+# new columns - first one that encompasses all adults in a given combo of timepoitn + treatment
+joined_phylo <- mutate(joined_phylo, timepoint_uni_tx = paste0(timepoint, "_", uni_tx))
+
+
+#next, one that uniquely identifies each flask 
+joined_phylo <- mutate(joined_phylo, flaskID = paste(timepoint, uni_tx, substrRight(joined_phylo$sorting_var, 1), sep = "_"))
+joined_phylo$flaskID  <- sub("-", "_", joined_phylo$flaskID)
+
+
+
+joined_phylo$flaskID <- as.vector(joined_phylo$flaskID)
+
+
+adonis2(phylo_rpcadist ~ joined_phylo$uni_tx* joined_phylo$timepoint/ joined_phylo$flaskID , permutations = 999)
+
+#                                                                 Df SumOfSqs      R2       F Pr(>F)    
+# joined_phylo$uni_tx                                               3   198.77 0.25744 58.1706  0.001 ***
+# joined_phylo$timepoint                                            5    24.84 0.03218  4.3625  0.001 ***
+# joined_phylo$uni_tx:joined_phylo$timepoint                        9    54.64 0.07076  5.3299  0.001 ***
+# joined_phylo$uni_tx:joined_phylo$timepoint:joined_phylo$flaskID  53   137.34 0.17788  2.2750  0.001 ***
+# Residual                                                        313   356.51 0.46174                   
+# Total                                                           383   772.09 1.00000                   
+# ---
+                                
+#same trend as RPCA! now test disper
+
+
+anova(betadisper(phylo_rpcadist, joined_phylo$uni_tx)) #sig
+anova(betadisper(phylo_rpcadist, joined_phylo$timepoint)) #not sig
+anova(betadisper(phylo_rpcadist, joined_phylo$flaskID)) #sig 
+
+                                                              
+#awesome, every trend is the same in rpca + phylo-rpca, simply report them together and ahve stats available in supplment 
+
+```
+
+
+

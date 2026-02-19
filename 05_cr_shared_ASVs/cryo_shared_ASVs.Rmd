@@ -1,0 +1,1120 @@
+---
+title: "cryo_shared_ASVs"
+author: "Holly Nichols"
+date: "2024-02-01"
+output: html_document
+---
+
+#Goals
+
+**Motivating questions: are the ASVs in the donor pools making it to adults? What's the fidelity of this transplant at the "strain" level **
+
+* Figure out which ASVs in water, larvae, and adults are shared with donor pools 
+* for the adult ASVs - how many can be linked back to paired donor pool samples? 
+* which ASVs are most often getting from donor pool all the way to adults, and does this vary by uni_tx? 
+    
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+library(phyloseq)
+library(tidyverse)
+#install.packages("janitor")
+library("janitor") #for cleaning up some row names 
+library("cowplot") #for plotting
+
+
+
+
+ps.filled = readRDS("../data/phyloseq/crPSFilled")
+
+
+ps.homogenate_UW <- subset_samples(ps.filled, sample_type == "homogenate" & uni == "UW") %>% prune_taxa(taxa_sums(.)>0,.)
+
+
+ps.homogenate_LSTM <- subset_samples(ps.filled, sample_type == "homogenate" & uni == "LSTM")%>% prune_taxa(taxa_sums(.)>0,.)
+
+
+
+
+```
+
+#Elizabethkingia ASVs 
+
+Additional File 6 and 11
+
+```{r elizabethkingia}
+
+#make a phyloseq object with JUST elizabethkingia ASVs
+
+
+#let's get relabund psobj first 
+ps.relabund <- transform_sample_counts(ps.filled, function(x) { x/sum(x) })
+
+
+
+ps.elizabethkingia <- subset_taxa(ps.filled, Genus == "Elizabethkingia")
+ps.elizabethkingia.relabund <- subset_taxa(ps.relabund, Genus == "Elizabethkingia")
+#60 Elizabethkingia ASVs, wow 
+
+
+#plot the relative abundance by whether eaach ASV is Elizabethkignia or not  
+
+taxa_abundance_table_ez<- psmelt(ps.elizabethkingia.relabund)
+#split homogenate into UW-h and LSTM-h , just mutate a new column 
+ez_hsplit <- taxa_abundance_table_ez %>%
+  mutate(
+    sample_type_hsplit = case_when(
+      sample_type == "homogenate" & uni == "UW" ~ "homogenate_UW",
+      sample_type == "homogenate" & uni == "LSTM" ~ "homogenate_LSTM",
+      TRUE ~ sample_type # Keep other values unchanged
+    )
+  )
+
+no_h <- filter(ez_hsplit, sample_type != "homogenate")
+
+only_h <- filter(ez_hsplit, sample_type == "homogenate")
+
+
+StackedBarPlot <- no_h %>%
+   ggplot(aes(x =sample_id, y = Abundance, fill = OTU)) +
+   geom_bar(stat = "identity") +
+  labs(x = "",y = "Relative Abundance",title = "Elizabethkingia Relative Abundance")+ 
+   facet_wrap(~interaction(uni_tx,sample_type_hsplit), scales = "free_x") +
+ theme_cowplot() + 
+      theme(legend.position="none") +
+  theme(text = element_text(size=20), axis.text.x=element_blank(),axis.ticks.x=element_blank()) +
+   theme(strip.text.x = element_text(size = 8))+ 
+      scale_y_continuous(expand = c(0,0.001))+# move x-axis up so it's nearly touching bars but not obscuring 
+    coord_cartesian(ylim=c(0,1))
+StackedBarPlot
+# Very clearly shows that all of the LSTM samples have tons of Elizabethkingia while only the UW-mismatch have elizabethkingia - also that there's one main ASV that dominates even though there are 60 ASVs of eliz in the dataset 
+
+#ggsave("./plots/Elizabethkingia_ASV_by_sample.pdf", height=5, width=9, device="pdf") 
+
+#just homogenate
+StackedBarPlot_h <- only_h %>%
+   ggplot(aes(x =sample_id, y = Abundance, fill = OTU)) +
+   geom_bar(stat = "identity") +
+  labs(x = "",y = "Relative Abundance",title = "Elizabethkingia Relative Abundance")+ 
+   facet_wrap(~interaction(uni_tx,sample_type_hsplit), scales = "free_x") +
+ theme_cowplot() + 
+      theme(legend.position="none") +
+  theme(text = element_text(size=20), axis.text.x=element_blank(), axis.ticks.x=element_blank()) +
+   theme(strip.text.x = element_text(size = 8)) +
+    scale_y_continuous(expand = c(0,0.001))+ # move x-axis up so it's nearly touching bars but not obscuring 
+  coord_cartesian(ylim=c(0,1))
+
+StackedBarPlot_h
+#ggsave("./plots/Elizabethkingia_ASV_donor_pools.pdf", height=2.5, width=4, device="pdf") 
+
+
+
+head(taxa_abundance_table_ez)
+
+temp <- taxa_abundance_table_ez %>% group_by(OTU) %>% summarise(mean_perc = 100* mean(Abundance),
+                                                                max_perc = 100*max(Abundance))
+
+#ok, this tells me that most of the Elizabethkingia ASVs are rare, and there are 7 that get >1% abundance, but it's one that really dominates
+
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+# Asaia - where did she go? 
+Asaia is prevalent in LSTM homogenate samples, but doesn't seem to show up anywhere else. 
+A tiny bit is visible in some samples, like less than 1% relabund, but clearly is not a strong contender for surviving in a cryopreserved community 
+Also i am reassured that it is present anywhere - not a decontam glitch, just biology!
+
+```{r asaia}
+melt_relabund <- psmelt(ps.relabund)
+
+head(melt_relabund)
+
+dfAsaia <- filter(melt_relabund, Genus == "Asaia")
+unique(dfAsaia$OTU)
+#four different asaia ASVs. 
+
+
+
+StackedBarPlot <- dfAsaia %>%
+   ggplot(aes(x =sample_id, y = Abundance, fill = Genus)) +
+   geom_bar(stat = "identity", fill = "purple") +
+  labs(x = "",y = "Relative Abundance",title = "Asaia Relative Abundance")+ 
+   facet_wrap(~interaction(sample_type,uni_tx), scales = "free_x", nrow = 2) +
+  theme_cowplot() + 
+  theme(text = element_text(size=20), axis.text.x=element_blank()) +
+   theme(strip.text.x = element_text(size = 8))
+StackedBarPlot
+
+
+#mostly one asaia ASV, doesnt's show up in downstream samples to any significant extent. 
+
+```
+
+
+#Are the Actinos falling off in later time points? 
+
+Faceted this by both interaction(uni_tx,sample_type) and timepoint. 
+
+* First plot shows that there's more Actinos in larvae - though also some in LSTM-mismatch adults. 
+* Second plot shows that Actinos do not actually fall off in later time points, but this maybe driven by a particularly strong showing in LSTM samples at the 6 month timepoint. 
+
+
+```{r actino}
+
+dfActino <- filter(melt_relabund, Phylum == "Actinobacteriota")
+length(unique(dfActino$OTU))
+#452 different Actino ASVs. 
+
+
+#Actinos in different sample types? 
+StackedBarPlot <- dfActino %>%
+   ggplot(aes(x =sample_id, y = Abundance, fill = Genus)) +
+   geom_bar(stat = "identity", show.legend = FALSE) +
+  labs(x = "",y = "Relative Abundance",title = "Actinobacteriota Relative Abundance")+ 
+   facet_wrap(~interaction(sample_type,uni_tx), scales = "free_x", nrow = 2) +
+  theme_cowplot() + 
+  theme(text = element_text(size=20), axis.text.x=element_blank()) +
+   theme(strip.text.x = element_text(size = 8))
+StackedBarPlot
+
+
+#actinos at different timepoints? 
+StackedBarPlot2 <- dfActino %>%
+   ggplot(aes(x =sample_id, y = Abundance, fill = Genus)) +
+   geom_bar(stat = "identity", show.legend = FALSE) +
+  labs(x = "",y = "Relative Abundance",title = "Actinobacteriota Relative Abundance")+ 
+   facet_wrap(~interaction(timepoint), scales = "free_x", nrow = 2) +
+  theme_cowplot() + 
+  theme(text = element_text(size=20), axis.text.x=element_blank()) +
+   theme(strip.text.x = element_text(size = 8))
+StackedBarPlot2
+```
+
+
+
+## Frequently transmitted ASVs ASVs
+
+**Goal:** What proportion of ASVs in donor pool samples go on to be found in the water/larvae/adults that they went into? 
+
+Pseudocode: 
+
+Make a dataframe with just the UW-match ASVs and counts per sample (OTU table)
+
+
+Make new phyloseq object with just UW homogenate ASVs in it
+Loop through all of the ASVs found in UW homogenate
+  for each ASV
+    check if nonzero in adults 
+    if so, put a TRUE in a newcol
+    
+Want a dataframe that's like: 
+
+
+ASV                         homogenate1    ...   homogenate 40    in_adults     in_larvae       in_water
+q4ou25gtlaedfkjghqvob7        0.24         ...        0.35            TRUE         FALSE          TRUE
+  
+This could help build that single stacked bar, and we could have one bar for each condition to see whether the swap affects the **(1)** number of ASVs that get transmitted and **(2)** whether the relative abundance of ASVs that are shared with transplants is higher 
+* From LSTM to LSTM 
+* From LSTM to UW 
+* From UW to UW
+* From UW to LSTM 
+
+
+
+  
+
+```{r byflask_transformations}
+
+#first goal: for those ASVs in homogenate, which ASVs made it to the most transplants (larvae/water/adults)?
+#second goal: how does that change between the matched and mismatched tx? 
+
+
+#so very first - how many LSTM homogenate ASVs made it into the UW-mismatch adults? 
+
+#start by working with the NON-relabund phyloseq objects
+ps.homogenate_UW <- subset_samples(ps.filled, sample_type == "homogenate" & uni == "UW") %>% prune_taxa(taxa_sums(.)>0,.)
+#99 taxa
+
+
+ps.homogenate_LSTM <- subset_samples(ps.filled, sample_type == "homogenate" & uni == "LSTM") %>% prune_taxa(taxa_sums(.)>0,.)
+#729 taxa
+
+
+# melt phyloseq data to data frame
+
+mdf <- psmelt(ps.filled) #this takes a minute or two  to run 
+
+
+
+# compute taxa sum according to sample type (how many adult vs larvae vs water samples have a given ASV? )
+sampletype_abund <- dplyr::group_by(mdf, OTU, sample_type) %>% 
+  dplyr::summarise(abundance = sum(Abundance))
+
+
+
+
+sampletype_abund_spread <- tidyr::spread(sampletype_abund, sample_type, abundance)
+
+
+
+sampletype_unitx_abund <- dplyr::group_by(mdf, OTU, interaction(uni_tx,sample_type)) %>% 
+  dplyr::summarise(abundance = sum(Abundance))
+
+# Rename column to something that doesn't look like a function
+names(sampletype_unitx_abund)[names(sampletype_unitx_abund) == "interaction(uni_tx, sample_type)"] <- "ix"
+
+
+tidyr::spread(sampletype_unitx_abund, ix, abundance)
+#does not contain homogenate samples 
+#rows = ASVs
+#columns = sample_type by uni_tx
+#entry  = number of reads found in samples that match that description
+#also need to count how many samples fit that description 
+#AND most importantly - how many samples just have detectable amounts of that ASV? 
+
+#if I then filter this dataframe to only have ASVs that are found in LSTM_homogenate, that tells me which LSTM homogenates 
+  
+
+####ok, need a dataframe that has OTUs and then isntad of summing Abundance, just count the number of samples with nonzero values for Abundance. 
+
+
+#old version that also counts abundance and total samples
+# ASVs_in_sampletype <- dplyr::group_by(mdf, OTU, sample_type) %>% 
+#   dplyr::summarise(abundance = sum(Abundance), total_sams = n(), nonzero_sams = sum(Abundance != 0) ) 
+
+
+#for full df - 
+#389 adult samples 
+#78 homogenate samples 
+#56 larvae
+#72 water 
+
+
+
+
+
+grandASVdf <- dplyr::group_by(mdf, OTU, interaction(uni_tx,sample_type)) %>% 
+  dplyr::summarise(nonzero_sams = sum(Abundance != 0)) #this is the operative bit of code that sums up how many samples have nonzero read counts for each ASV 
+
+
+
+# Rename column to something that doesn't look like a function, and replace hyphens with underscores
+names(grandASVdf)[names(grandASVdf) == "interaction(uni_tx, sample_type)"] <- "ix"
+grandASVdf$ix <- sub("-", "_", grandASVdf$ix)
+grandASVdf_wide <- tidyr::spread(grandASVdf, ix, nonzero_sams) 
+
+
+
+  
+#make a list that's all of the ASV names in ps.homogenate_LSTM
+LSTM_list <- c(rownames(otu_table(ps.homogenate_LSTM)))
+
+#then only keep rows that are in a the LSTM homogenate 
+inLSTM_df <- filter(grandASVdf_wide, OTU %in% LSTM_list)
+#awesome, 729x14
+
+
+#Create lists of sample identifiers that recieved each homogenate 
+UW_recip <- c("LSTM_mismatch.adult","LSTM_mismatch.water", "LSTM_mismatch.larvae", "UW_match.adult", "UW_match.larvae", "UW_match.water")
+LSTM_recip <- c("UW_mismatch.adult", "UW_mismatch.water", "UW_mismatch.larvae", "LSTM_match.adult", "LSTM_match.water", "LSTM_match.larvae")
+  
+
+  
+LSTM_oft_transmitted <- select(inLSTM_df, one_of(LSTM_recip))
+
+
+####top 20 ASVs transmitted from LSTM homogenate to UW adults BY NUMBER OF ADULTS THAT GOT IT  ######
+LSTM_oft_transmitted <- LSTM_oft_transmitted[order(LSTM_oft_transmitted$UW_mismatch.adult,decreasing = TRUE) , ]
+top20_LSTM_to_UW <- LSTM_oft_transmitted[1:20,1]
+#interesting one to look through because this can tell you what made it to LSTM but not UW recipients - perhaps those are ASVs that are getting filtered out by the host? 
+#for example: 938822a7d46b490d8a8d38409ef03f17 is NOT found in any UW mismatch samples, but it's in 66 LSTM match adults and 11mismatch waters (no larvae though)
+#that asv is classified as: Family_Burkholderiaceae_A_592522
+
+
+#####Top 20 ASVs transmitted from LSTM homogenate to LSTM adults BY NUMBER OF ADULTS THAT GOT IT########
+LSTM_oft_transmitted <- LSTM_oft_transmitted[order(LSTM_oft_transmitted$LSTM_match.adult,decreasing = TRUE) , ]
+top20_LSTM_to_LSTM <- LSTM_oft_transmitted[1:20,1]
+
+
+```
+
+
+#Oft-transmitted ASVs - WHich ASVs are present in more than half of adults that got LSTM homogneate?
+
+```{r oft-trans_LSTM}
+
+#count how many adults are in each condition
+
+count_conditions <- dplyr::group_by(mdf, OTU, interaction(uni_tx,sample_type)) %>% 
+  dplyr::summarise(nonzero_sams = sum(Abundance != 0), total_sams = n()) 
+names(count_conditions)[names(count_conditions) == "interaction(uni_tx, sample_type)"] <- "ix"
+
+
+count_conditions_small <- count_conditions %>% as.data.frame() %>%  select(ix, total_sams)
+count_conditions_small <- count_conditions_small[1:13, ] 
+count_conditions_small$ix <- sub("-", "_", count_conditions_small$ix)
+
+
+
+#### All ASVs present in at least half of LSTM-match adults
+
+inHalfLSTM_match <- filter(LSTM_oft_transmitted, LSTM_match.adult >= 62)
+#wow, only 4 ASVs present in more than half of LSTM match adults that can be traced back to LSTM homogneate
+
+# 7e18a39dd964eb207545655ebe71a459
+# dcba105f35d8ebc9e22269c7491ad3a7	
+# 945184b6386c192c0066e0a98a154780
+# 938822a7d46b490d8a8d38409ef03f17
+
+
+#in a third of adults
+in33LSTM_match <- filter(LSTM_oft_transmitted, LSTM_match.adult >= 41)
+
+
+
+#### All ASVs present in at least half of UW-mismatch adults
+inHalfUW_mismatch <- filter(LSTM_oft_transmitted, UW_mismatch.adult >= 24)
+
+
+in33UW_mismatch <- filter(LSTM_oft_transmitted, UW_mismatch.adult >= 16)
+
+
+```
+
+
+##Merge data by sorting_var
+
+Current question - which ASVs made it to the  most "populations" or "instances of inoculation?" 
+ 
+* Each flask was basically a microcosm, so to show that an ASV was found in a flask means that the transfer was successful even if it wasn't in every single mosquito in that flask 
+* This only makes sense for adult samples though, so get rid of homogenate, water, and larvae before merge
+* then let's merge the phyloseq object by sorting_var
+* then we can do the same as above and count how many flasks share a particular ASV with the LSTM homogenate. 
+
+
+At the very end of this chunk, it generates half of  AF13
+
+
+```{r merge_flasks}
+
+
+#CURRENT GOAL - count # of flasks with ASVs rather than number of samples 
+
+
+#first KEEP ONLY ADULTS from mdf 
+
+mdf_adults <- filter(mdf, sample_type == "adult")
+mdf_adults$sorting_var <- sub("-", "_", mdf_adults$sorting_var) # clean up the sorting_var names 
+mdf_adults$sorting_var <- sub(" ", "_", mdf_adults$sorting_var)
+mdf_adults$sorting_var <- sub("-", "_", mdf_adults$sorting_var)
+
+
+
+
+# flasks_df_allinfo <- group_by(mdf_adults, OTU, sorting_var) %>% summarise(abundance = sum(Abundance), adults_from_flask = n(), nonzero_adults = sum(Abundance != 0))
+
+flasks_df <- group_by(mdf_adults, OTU, sorting_var) %>% summarise(abundance = sum(Abundance)) 
+flasks_wide <- tidyr::spread(flasks_df, OTU, abundance)
+temp <- as.data.frame(t(flasks_wide))
+temp2 <- janitor::row_to_names(temp,row_number = 1)
+temp3 <- tibble::rownames_to_column(temp2, "OTU")
+
+#now only keep the ASVs that are also in LSTM homogenate
+
+#LSTM_list - defined above as just a list of the 729 ASVs in LSTM homogneate 
+
+inLSTM_byflask <- filter(temp3, OTU %in% LSTM_list)
+#remember, at this point we only care whether each ASV was detected in that flask, not the actual read count. 
+
+
+
+####################################
+#################start the better sorting variable #########
+
+#Define a function to extract characters from the right side of a string 
+substrRight <- function(x, n){
+  substr(x, nchar(x)-n+1, nchar(x))
+}
+
+#substrRight(sample_data(ps.adult)$sorting_var, 1) # confirmed it produces a bunch of A/B/C/D
+
+
+
+#goal - create a new column flaskID
+  
+ps.temp <- ps.filled
+sample_data(ps.temp)$flaskID <- paste(sample_data(ps.temp)$uni_tx,sample_data(ps.temp)$timepoint, substrRight(sample_data(ps.temp)$sorting_var, 1), sep = "_")
+sample_data(ps.temp)$flaskID  <- sub("-", "_", sample_data(ps.temp)$flaskID)
+ps.flaskASVs <- subset_samples(ps.temp, flaskID != "__e")
+ps.flaskASVs <- prune_taxa(taxa_sums(ps.flaskASVs) > 0, ps.flaskASVs) #trim taxa not found in this subset
+#517 samples, 4107 taxa 
+
+#ok, now make this long form, group by flaskID, sum the abudnace across teh whole flask group for each ASV
+#also need to count how many samples are in each flask group, and how many total flask groups there are 
+length((unique(sample_data(ps.flaskASVs)$flaskID)))
+#72 flask groups (one of them has no adults though - that's #UW_d30_away_A or #UW_mismatch_d30_A )
+
+#Now count how many samples are in each flask (This includes larvae, water, and adult samples). Might come in handy later
+samples_by_flask <- table((sample_data(ps.flaskASVs)$flaskID), useNA = "ifany")
+#max 13 samples, min 2, median 7, mean ~7.18
+
+
+#ok NOW let's make this long form 
+mdf_byflask <- psmelt(ps.flaskASVs) #this takes a minute to run, very big df 
+dim(mdf_byflask)
+#df [2,035,946 × 42]
+
+
+
+abundance_byflask <- dplyr::group_by(mdf_byflask, OTU, flaskID) %>% 
+  dplyr::summarise(abundance = sum(Abundance))
+#will give total # of reads across that whole flask. We just need to know if it's zero or not
+max(abundance_byflask$abundance) #confirmed that this is summing abundances 
+
+
+
+abundance_byflask_spread <- tidyr::spread(abundance_byflask, flaskID, abundance)
+#now rows are ASVs and columns are flasks, entries are summed reads across a whole flask 
+#we could go and set any nonzero value to 1, then count how many flasks each ASV was detected in 
+
+
+
+detected_byflask <- ungroup(abundance_byflask_spread)
+detected_byflask[-1] <-  sapply(detected_byflask[-1], as.logical) #turned evertying into true/flase
+detected_byflask[-1] <- sapply(detected_byflask[-1], as.numeric) #and converted to 1/0
+detected_byflask_rn <- detected_byflask %>% remove_rownames %>% column_to_rownames(var="OTU") #OTU becomes a rowname
+
+#if an ASV was detected in a flask, that entry is a 1. If not detected, entry is a 0. 
+
+
+##########################LSTM homogneate ASVs found in LSTM-match 
+
+LSTM_ASV_list <- c(rownames(otu_table(ps.homogenate_LSTM)))
+
+inLSTM_byflask <- filter(detected_byflask, OTU %in% LSTM_ASV_list)
+#217x73 - there are 729 ASVs in the LSTM homogneate, which means that like 500 ASVs are not detected in the flasks at all 
+#we pruned taxa after removing the homogneate samples, so that's where that's coming from. 
+#wonder what those ASVs are, and what % of the homogenate community they make up 
+inLSTM_byflask_rn <- inLSTM_byflask %>% remove_rownames %>% column_to_rownames(var="OTU") #OTU becomes a rowname
+
+
+
+#make a new df with only flasks starting with LSTM-match, UW-mismatch, or both (after filtering for just LSTM-homogenate ASVs)
+
+ASVflasks_LSTM_match <- select(inLSTM_byflask_rn, starts_with("LSTM_match")) #24 flasks - 6 timepoints, 4 flasks
+ASVflasks_UW_mismatch <- select(inLSTM_byflask_rn, starts_with("UW_mismatch")) #12 flasks
+ASVflasks_LSTM_donor <- select(inLSTM_byflask_rn, starts_with("LSTM_match") | starts_with("UW_mismatch")) #36 flasks, includes all that got the LSTM homogneate
+
+
+#change column to rownames
+
+detected_byflask_rn <- detected_byflask %>% remove_rownames %>% column_to_rownames(var="OTU")
+number_flasks_detected <- rowSums(detected_byflask_rn)
+#ok, but let's just keep entries that are found in
+
+LSTM_match_flasks_24 <- c(rowSums(ASVflasks_LSTM_match))
+UW_mismatch_flasks_12 <- c(rowSums(ASVflasks_UW_mismatch))
+combined_flasks_36 <- c(rowSums(ASVflasks_LSTM_donor))
+
+LSTM_transmitted_byflask <- data.frame(LSTM_match_flasks_24,UW_mismatch_flasks_12,combined_flasks_36)
+LSTM_transmitted_byflask <- LSTM_transmitted_byflask[order(LSTM_transmitted_byflask$combined_flasks_36,decreasing=TRUE),]
+
+#general agreement between those ASVs that were transmitted to LSTM_match and UW-mismatch 
+
+#keep only ASVs that were transmitted to at least 12 LSTM_match OR at least 6 UW-mismatch 
+
+LSTM_oft_transmitted_byflask <- filter(LSTM_transmitted_byflask, LSTM_match_flasks_24 >= 12 | UW_mismatch_flasks_12 >= 6)
+#narrowed to 39 ASVs that frequently made it to the next flask 
+#cool to note which do not make it, see if we can add some tax info 
+tax_info_genus <- tax_table(ps.filled) %>% as.matrix() %>% as.data.frame() %>% select(Genus)
+
+LSTM_oft_transmitted_byflask_g <- left_join(rownames_to_column(LSTM_oft_transmitted_byflask), rownames_to_column(tax_info_genus), by = "rowname")
+#write.csv(LSTM_oft_transmitted_byflask_g,"./ASVS_lost_LSTM.csv")
+
+
+
+asvs_lost_to_UW <- filter(LSTM_oft_transmitted_byflask_g, UW_mismatch_flasks_12 == 0)
+asvs_lost_to_UW$Genus
+
+
+
+```
+
+
+# Oft-transmitted from UW donor pool 
+
+Find ASVs that made it to at least half of UW-match flasks, then see how many of those ASVs made it to LSTM-mismatch flasks (metric of "making it" to a flask = at least 1 adult detected with that ASV in the flask. )
+
+The other half of AF13
+
+```{r}
+
+
+UW_list <- c(rownames(otu_table(ps.homogenate_UW)))
+
+
+inUW_byflask <- filter(detected_byflask, OTU %in% UW_list)
+#56x73 
+inUW_byflask_rn <- inUW_byflask %>% remove_rownames %>% column_to_rownames(var="OTU") #OTU becomes a rowname
+
+
+#make a new df with only flasks starting with LSTM-match, UW-mismatch, or both (after filtering for just LSTM-homogenate ASVs)
+
+ASVflasks_UW_match <- select(inUW_byflask_rn, starts_with("UW_match")) #24 flasks - 6 timepoints, 4 flasks
+ASVflasks_LSTM_mismatch <- select(inUW_byflask_rn, starts_with("LSTM_mismatch")) #12 flasks
+ASVflasks_UW_donor <- select(inUW_byflask_rn, starts_with("UW_match") | starts_with("LSTM_mismatch")) #36 flasks, includes all that got the LSTM homogneate
+
+
+#change column to rownames
+
+detected_byflask_rn <- detected_byflask %>% remove_rownames %>% column_to_rownames(var="OTU")
+number_flasks_detected <- rowSums(detected_byflask_rn)
+#ok, but let's just keep entries that are found in
+
+UW_match_flasks_24 <- c(rowSums(ASVflasks_UW_match)) #this is, per ASV, how many UW flasks it was in 
+LSTM_mismatch_flasks_12 <- c(rowSums(ASVflasks_LSTM_mismatch))
+combined_flasks_36 <- c(rowSums(ASVflasks_UW_donor))
+
+UW_transmitted_byflask <- data.frame(UW_match_flasks_24,LSTM_mismatch_flasks_12,combined_flasks_36)
+UW_transmitted_byflask <- UW_transmitted_byflask[order(UW_transmitted_byflask$combined_flasks_36,decreasing=TRUE),]
+
+
+
+#keep only ASVs that were transmitted to at least 12 LSTM_match OR at least 6 UW-mismatch 
+
+UW_oft_transmitted_byflask <- filter(UW_transmitted_byflask, UW_match_flasks_24 >= 12 | LSTM_mismatch_flasks_12 >= 6)
+#narrowed to 27 ASVs that frequently made it to the next flask 
+#cool to note which do not make it, see if we can add some tax info 
+tax_info_genus <- tax_table(ps.filled) %>% as.matrix() %>% as.data.frame() %>% select(Genus)
+
+UW_oft_transmitted_byflask_g <- left_join(rownames_to_column(UW_oft_transmitted_byflask), rownames_to_column(tax_info_genus), by = "rowname")
+#write.csv(UW_oft_transmitted_byflask_g,"./ASVS_lost_UW.csv")
+
+
+
+asvs_lost_to_LSTM <- filter(UW_oft_transmitted_byflask_g, LSTM_mismatch_flasks_12 == 0)
+asvs_lost_to_LSTM$Genus
+
+# Only Arthrobacter_E
+
+
+```
+
+
+
+# Graphing just the "lost taxa" from LSTM donor pool - how common are those 11 taxa in LSTM water, adults, donor pool? 
+
+AF14
+
+```{r}
+
+ps.relabund <- transform_sample_counts(ps.filled, function(x) { x/sum(x) })
+#melt_relabund <- psmelt(ps.relabund) #Commented out b/c it takes forever to run, and it's also generated upstream. 
+
+
+
+#ok now need to filter for in asvs_lost_to_UW
+
+
+asvs_lost_to_UW$rowname
+
+
+df_UWlost <- filter(melt_relabund, OTU %in% asvs_lost_to_UW$rowname) %>% filter(sample_type == "adult")
+
+facet_names <- c(
+  "0h" = "Unfrozen", 
+  "24h" = "24 hours", 
+  "d10" = "10 days", 
+  "d16" = "16 days", 
+  "d30" = "30 days", 
+  "mo6" = "6 months")
+
+bars <- df_UWlost %>% filter(uni_tx == "LSTM-match") %>%
+   ggplot(aes(x =sample_id, y = Abundance, fill = Genus)) +
+   geom_bar(stat = "identity") +
+  labs(x = "",y = "Relative Abundance")+ 
+   facet_wrap(~(timepoint), scales = "free_x", ncol = 6, labeller = as_labeller(facet_names)) +
+  theme_cowplot() + 
+  scale_fill_manual(values = c(
+  "#1b9e77",  # teal-green
+  "#d95f02",  # orange
+  "#7570b3",  # purple
+  "#e7298a",  # pink/magenta
+  "#66a61e",  # olive-green
+  "#e6ab02",  # mustard
+  "#a6761d",  # brown
+  "#666666",  # grey
+  "#1f78b4",  # blue
+  "#b2df8a",  # light green
+  "#fb9a99"   # light salmon
+)) +
+  theme(text = element_text(size=20), axis.text.x=element_blank(),axis.ticks.x=element_blank()) +
+   theme(strip.text.x = element_text(size = 11))+ 
+  scale_y_continuous(expand = c(0,0.001))# move x-axis up so it's nearly touching bars but not obscuring 
+
+bars
+
+#ggsave("./plots/shared_ASVs/LSTM_lost_bars.pdf", height=3.5, width=15, device="pdf") 
+
+
+```
+
+
+# Graph UW donor pool ASVs that don't make it to LSTM-mismatch adults (just Arhrobacter)
+Conclusion - they're really not common in UW-match either! 
+AF15
+
+```{r}
+
+df_LSTMlost <- filter(melt_relabund, OTU %in% asvs_lost_to_LSTM$rowname) %>% filter(sample_type == "adult")
+
+facet_names <- c(
+  "0h" = "Unfrozen", 
+  "24h" = "24 hours", 
+  "d10" = "10 days", 
+  "d16" = "16 days", 
+  "d30" = "30 days", 
+  "mo6" = "6 months")
+
+bars2 <- df_LSTMlost %>% filter(uni_tx == "UW-match") %>% 
+   ggplot(aes(x =sample_id, y = Abundance, fill = Genus)) +
+   geom_bar(stat = "identity") +
+  labs(x = "",y = "Relative Abundance")+ 
+  facet_wrap(~timepoint, scales = "free_x", nrow = 1, labeller = as_labeller(facet_names)) +
+  theme_cowplot() + 
+  theme(text = element_text(size=20), axis.text.x=element_blank(),axis.ticks.x=element_blank()) +
+   theme(strip.text.x = element_text(size = 11))+ 
+  scale_y_continuous(expand = c(0,0.000001))+#+# move x-axis up so it's nearly touching bars but not obscuring 
+  coord_cartesian(ylim=c(0,0.005))
+bars2
+
+#ggsave("./plots/shared_ASVs/UW_lost_bars.pdf", height=3.5, width=15, device="pdf") 
+#super rare  in UW-match adults 
+
+
+```
+
+
+
+
+
+
+# ASVs in Adults that are shaed with donor pool samples 
+
+On the basis of each individual adult mosquito, what prop of its ASVs can be traced back to the LSTM donor pool
+
+Section to just stock_origin = LSTM 
+
+For each sample - was that ASV in (a list of ASVs in LSTM homogenate) >> add (yes/no) to the tax table 
+
+
+Final plot is faceted by uni_tx and time 
+
+```{r}
+
+ps.adult_got_LSTM <- subset_samples(ps.filled, sample_type == "adult" & stock_origin == "LSTM")
+#172 samples
+ps.adult_got_LSTM <- prune_taxa(taxa_sums(ps.adult_got_LSTM) > 0, ps.adult_got_LSTM) #trim taxa not found in this subset
+#1533 taxa
+
+
+
+
+CheckInSamples <- function(ps) {
+
+  
+  OTU <- vector(mode = "character", length = nrow(tax_table(ps)))
+  Shared <- vector(mode = "character", length = nrow(tax_table(ps)))
+  
+  ASV_list <- rownames(tax_table(ps.homogenate_LSTM))
+  
+  for (i in 1:nrow(tax_table(ps))) {
+  OTU[i] <- rownames(tax_table(ps))[i]
+  if (rownames(tax_table(ps))[i] %in% ASV_list) {
+    Shared[i] = "yes"}
+  else {
+    Shared[i] <- "no"}
+  }
+  
+  Shared_df <- data.frame(Shared, row.names = OTU)    
+  ps.temp <- ps
+  temp_taxtable <- as.data.frame(tax_table(ps.temp)[,1:8]) #ensure that no other "Shared" column is on here 
+  merged_taxtable <- merge(temp_taxtable,Shared_df, by = 'row.names')
+  merged_taxtable <- merged_taxtable %>% remove_rownames %>% column_to_rownames(var="Row.names") #OTU becomes a rowname
+ 
+  tax_table(ps.temp) <- as.matrix(merged_taxtable) #Add this dataframe back to the tax_table() from your ps object
+  ps.norm = transform_sample_counts(ps.temp, function(x) x / sum(x) ) #set to relative abundaces
+
+  melt_df <- psmelt(ps.norm)  #create long plottable df
+  return(melt_df)
+  
+} 
+  
+
+df<- CheckInSamples(ps.adult_got_LSTM)
+
+
+
+
+
+bar_plot<-df%>%
+  ggplot(aes(x=full_id, y=Abundance, fill=Shared))+
+  geom_col() +
+   xlab("Individual Adult samples")+ ylab("Proportion of Reads")+
+  theme_cowplot() + theme(text = element_text(size=20), axis.text.x=element_blank()) +
+  scale_y_continuous(expand = c(0,0)) + 
+  facet_wrap(~interaction(uni_tx,timepoint), scales = "free_x", nrow = 2) +
+  theme(strip.text.x = element_text(size = 8))+
+  ggtitle("Adult ASVs \n shared with LSTM homogenate")
+
+bar_plot
+
+#conclusion - nearly al ASVs that are found in adults can be traced ack to LSTM-homogenate, main exceptions actually being LSTM match 0h and LSTM match 24h -  perhpas this means they're getting colonized by microbes at low abudnance in stock that die off after short periods of freezing. 
+
+```
+
+
+
+#What about shared with UW donor pool? 
+
+
+```{r adults_shared_with_UW}
+
+
+
+ps.adult_got_UW <- subset_samples(ps.filled, sample_type == "adult" & stock_origin == "UW")
+#217 samples
+ps.adult_got_UW <- prune_taxa(taxa_sums(ps.adult_got_UW) > 0, ps.adult_got_UW) #trim taxa not found in this subset
+#2277 taxa
+
+
+
+
+CheckInSamples_UW <- function(ps) {
+
+  
+  OTU <- vector(mode = "character", length = nrow(tax_table(ps)))
+  Shared <- vector(mode = "character", length = nrow(tax_table(ps)))
+  
+  ASV_list <- rownames(tax_table(ps.homogenate_UW))
+  
+  for (i in 1:nrow(tax_table(ps))) {
+  OTU[i] <- rownames(tax_table(ps))[i]
+  if (rownames(tax_table(ps))[i] %in% ASV_list) {
+    Shared[i] = "yes"}
+  else {
+    Shared[i] <- "no"}
+  }
+  
+  Shared_df <- data.frame(Shared, row.names = OTU)    
+  ps.temp <- ps
+  temp_taxtable <- as.data.frame(tax_table(ps.temp)[,1:8]) #ensure that no other "Shared" column is on here 
+  merged_taxtable <- merge(temp_taxtable,Shared_df, by = 'row.names')
+  merged_taxtable <- merged_taxtable %>% remove_rownames %>% column_to_rownames(var="Row.names") #OTU becomes a rowname
+ 
+  tax_table(ps.temp) <- as.matrix(merged_taxtable) #Add this dataframe back to the tax_table() from your ps object
+  ps.norm = transform_sample_counts(ps.temp, function(x) x / sum(x) ) #set to relative abundaces
+
+  melt_df <- psmelt(ps.norm)  #create long plottable df
+  return(melt_df)
+  
+} 
+  
+
+df<- CheckInSamples_UW(ps.adult_got_UW)
+
+
+
+bar_plot<-df%>%
+  ggplot(aes(x=full_id, y=Abundance, fill=Shared))+
+  geom_col() +
+   xlab("Individual Adult samples")+ ylab("Proportion of Reads")+
+  theme_cowplot() + theme(text = element_text(size=20), axis.text.x=element_blank()) + scale_y_continuous(expand = c(0,0)) + 
+  facet_wrap(~interaction(uni_tx,timepoint), scales = "free_x", nrow = 2) +
+  theme(strip.text.x = element_text(size = 8))+
+  ggtitle("Adult ASVs \n shared with UW homogenate")
+
+bar_plot
+
+#try faceting just by uni_tx
+
+bar_plot<-df%>%
+  ggplot(aes(x=full_id, y=Abundance, fill=Shared))+
+  geom_col() +
+   xlab("Individual Adult samples")+ ylab("Proportion of Reads")+
+  theme_cowplot() + theme(text = element_text(size=20), axis.text.x=element_blank()) + scale_y_continuous(expand = c(0,0)) + 
+  facet_wrap(~uni_tx, scales = "free_x", nrow = 2) +
+  theme(strip.text.x = element_text(size = 8))+
+  ggtitle("Adult ASVs \n shared with UW homogenate")
+
+bar_plot
+
+
+
+
+```
+
+
+
+# Combo figure showing ASVs detected in adults that came from a given homogenate? 
+
+(still at individual level, preview, not in final manuscript)
+
+```{r}
+#get info from adults that got LSTM homogenate
+
+#Adults that got XYZ homogneate: (remake ps objects in case overwritten above )
+
+ps.adult_got_UW <- subset_samples(ps.filled, sample_type == "adult" & stock_origin == "UW")
+ps.adult_got_UW <- prune_taxa(taxa_sums(ps.adult_got_UW) > 0, ps.adult_got_UW) #trim taxa not found in this subset
+ps.adult_got_LSTM <- subset_samples(ps.filled, sample_type == "adult" & stock_origin == "LSTM")
+ps.adult_got_LSTM <- prune_taxa(taxa_sums(ps.adult_got_LSTM) > 0, ps.adult_got_LSTM)
+
+
+
+df_UW<- CheckInSamples_UW(ps.adult_got_UW)
+df_LSTM<- CheckInSamples(ps.adult_got_LSTM)
+
+
+
+
+
+#combine them? 
+df_combined <- dplyr::bind_rows(df_UW,df_LSTM)
+
+head(df_combined)
+
+#this code below does function, but it's just very slow. Use the simplified version below. 
+
+# bar_plot<-df_combined%>%
+#   ggplot(aes(x=full_id, y=Abundance, fill=Shared))+
+#   geom_col() +
+#    xlab("Individual Adult samples")+ ylab("Proportion of Reads")+
+#   theme_cowplot() + theme(text = element_text(size=20), axis.text.x=element_blank()) + scale_y_continuous(expand = c(0,0)) + 
+#   facet_wrap(~uni_tx, scales = "free_x", nrow = 2) +
+#   theme(strip.text.x = element_text(size = 8),axis.ticks.x=element_blank())+
+#   ggtitle("Adult ASVs \n shared with respective homogenate")
+# 
+# bar_plot
+
+
+#ok - can't open in inskcape b/c too  many spearate datapoints. Can we get merge all of the "yes" values for each samples and all of the "no" samples?
+#groupby
+
+
+
+
+simplified <- df_combined %>% dplyr::group_by(Sample, Shared, full_id, uni_tx, uni, tx) %>% dplyr::summarise(Abundance = sum(Abundance))
+#because "Shared" was included in the group_by(), it will automatically sum Abundance for "yes" vs "no"
+head(simplified)
+
+
+bar_plot<-simplified%>%
+  ggplot(aes(x=full_id, y=Abundance, fill=Shared))+
+  geom_col() +
+   xlab("Individual Adult samples")+ ylab("Proportion of Reads")+
+  theme_cowplot() + theme(text = element_text(size=20), axis.text.x=element_blank()) + scale_y_continuous(expand = c(0,0)) + 
+  facet_wrap(~uni_tx, scales = "free_x", nrow = 2) +
+  theme(strip.text.x = element_text(size = 8),axis.ticks.x=element_blank())+
+    scale_fill_manual(values = c("#74C476", "#6BAED6"))+ 
+  ggtitle("Adult ASVs \n shared with respective homogenate")
+
+bar_plot
+
+temp <- filter(simplified, Shared == "yes")
+min(temp$Abundance) #min is 0.02?? only 2% of ASVs came from homogenate in one adult sample
+mean(temp$Abundance) #93% shared on average
+median(temp$Abundance) #median 98%
+max(temp$Abundance)
+
+
+
+  
+#ggsave("./plots/shared_ASVs_adult.pdf", height=5, width=9, device="pdf") 
+
+
+```
+
+
+
+# Collapse this down into just four bars - one per uni_tx, and add error bars
+
+Conclusion - LSTM-mismatch is the most variable (suppoorted by Levene's test) and shares the fewest ASVs (not statisticaly singificnatclaim) . 
+
+
+Fig 3C
+
+```{r}
+
+#First we need to sum WITHIN EACH INDIVIDUAL all of the yes/no. Which exists already in df called simplified 
+
+head(simplified)
+#this groups by uni_tx and gets the  mean and sd within each group to build the error bars
+#make sure we're looking at SEM instead of SD 
+
+simplified_fourbars <- simplified %>% 
+  dplyr::group_by(uni_tx, Shared) %>%
+  dplyr::summarise(mean_abund = mean(Abundance), sem_abund = sd(Abundance)/sqrt(n())) %>%
+            mutate(uni_tx = factor(uni_tx))
+
+#now filter for just the error bars - i.e. we only need one entry per bar and the sd is the same for yes adn no anyway
+error_bars <- filter(simplified_fourbars, Shared == "yes")
+
+library(ggpubr)
+ggplot(simplified_fourbars, aes(x = uni_tx, y = mean_abund)) +
+  geom_bar(stat = 'identity', aes(fill = Shared)) +
+  geom_errorbar(data = error_bars,
+                aes(x = uni_tx, ymax = mean_abund + sem_abund, ymin = mean_abund - sem_abund), 
+                width = 0.2) + 
+  theme_pubr()+
+    theme(axis.text.x = element_text(angle = 45, size = 13, vjust = 0.5))+
+  scale_fill_manual(values = c("#74C476", "#6BAED6"))+ 
+  scale_y_continuous(expand = c(0,0)) 
+
+#ggsave("./plots/shared_ASVs_adult_fourbars.pdf", height=5, width=5, device="pdf") 
+
+
+
+```
+
+
+
+
+#Stats on fourbars  - adult relabund shared with paired donor pool
+
+```{r}
+
+
+no_by_samples <- filter(simplified, Shared == "no")
+yes_by_samples <- filter(simplified, Shared == "yes")
+
+
+
+ggqqplot(no_by_samples$Abundance)
+ggqqplot(yes_by_samples$Abundance)
+#skewed - do KW instead of anova
+
+kruskal.test(Abundance ~ uni_tx, data = no_by_samples) 
+# Kruskal-Wallis chi-squared = 49.09, df = 3, p-value = 1.248e-10
+
+
+library(dunn.test)
+dunn.test(no_by_samples$Abundance,no_by_samples$uni_tx,method = "bonferroni")
+#LSTM match differenct from all 
+#UW match different from UW-mismatch
+
+#LSTM mismatch only different from LSTM-match 
+
+#gotUW are teh same as each other 
+#LSTM-mismatch is only different from LSMT-match- doesn't make sense b/c UW-mismatch def looks different - probably because of differences in sample number. 
+
+# data: x and group
+# Kruskal-Wallis chi-squared = 49.0898, df = 3, p-value = 0
+# 
+# 
+#                            Comparison of x by group                            
+#                                  (Bonferroni)                                  
+# Col Mean-|
+# Row Mean |   LSTM-mat   LSTM-mis   UW-match
+# ---------+---------------------------------
+# LSTM-mis |  -5.584433
+#          |    0.0000*
+#          |
+# UW-match |  -5.771356   0.636288
+#          |    0.0000*     1.0000
+#          |
+# UW-misma |  -4.756477  -0.025516  -0.563582
+#          |    0.0000*     1.0000     1.0000
+
+
+
+#different answer if we do against teh abundance of shared ASVs?? 
+
+kruskal.test(Abundance ~ uni_tx, data = yes_by_samples) # p =2.6e-14
+
+dunn.test(yes_by_samples$Abundance,yes_by_samples$uni_tx,method = "bonferroni")
+#as expected, the exact same answer. That does increase my confidence in the method 
+
+
+
+#levene's test  testing whether they have different variances, seems like LSTM-mismatch may be more variable 
+
+library(car)
+leveneTest(Abundance~ uni_tx, data = no_by_samples) 
+#        Df F value    Pr(>F)    
+# group   3  13.955 1.179e-08 ***
+#       385                     
+
+
+#which ones are different? Apparently levene is just ANOVA on residuals (sample variance), so let's calculate residuals and then do anova/tukey
+
+
+#https://stackoverflow.com/questions/43646987/multiple-comparison-post-hoc-test-for-levenes-test
+
+#need a new column that's a median 
+no_by_samples$uni_tx <- as.factor(no_by_samples$uni_tx)
+
+#n is working, but median is not. 
+temp <- simplified %>% 
+  group_by(uni_tx, Abundance) %>% 
+  mutate(count = n(), med = median(Abundance), mean = mean(Abundance)) %>% 
+  ungroup()
+
+#fuck it. I can figure out the median of each manually, and add it manually 
+
+LSTM_match_med <- no_by_samples %>% filter(uni_tx == "LSTM-match")
+LSTM_mismatch_med <- no_by_samples %>% filter(uni_tx == "LSTM-mismatch")
+LSTM_match_med <- no_by_samples %>% filter(uni_tx == "LSTM-match")
+LSTM_match_med <- no_by_samples %>% filter(uni_tx == "LSTM-match")
+median(LSTM_mismatch_med$Abundance)
+
+
+#summarize some stuff
+find_medians <- no_by_samples %>% 
+  dplyr::group_by(uni_tx, Shared) %>%
+  dplyr::mutate(mean_abund = mean(Abundance), sd_abund = sd(Abundance), median_abund = median(Abundance)) %>%
+            mutate(uni_tx = factor(uni_tx)) %>% ungroup()
+#then use median to calculate residuals
+find_residuals <- find_medians %>% mutate(resids = abs(median_abund - Abundance))
+
+
+
+#ok. So here's the big difference. My plot is showing MEAN, which is different from MEDIAN. There's generally good agreement between mean and median, but not in LSTM-mismatch BECAUSE there's so much variation - so that's drivign the mean but not the median. Regardless, let's push through and get this post hoc for levene and move on. 
+
+
+
+
+# Then we run an ANOVA, and post-hoc if necessary:
+diy_levene<-aov(resids~uni_tx,find_residuals)
+summary(diy_levene) #significant
+TukeyHSD(diy_levene)
+
+#significant = LSTM-mismatch vs LSTM-mismatch 
+#UW-match vs LSTM-mismatch 
+#UW-mismatch vs LSTM mismatch
+
+# Levene's test shows that variance is highest in the LSTM-mismatch treatment, and not significant in other treatments 
+
+
+
+```
+
+
+

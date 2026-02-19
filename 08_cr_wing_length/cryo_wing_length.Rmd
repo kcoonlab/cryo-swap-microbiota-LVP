@@ -1,0 +1,332 @@
+---
+title: "cryo_wing_length"
+author: "Holly Nichols"
+date: "2023-01-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+library(phyloseq)
+library(tidyverse) 
+library(ggplot2)
+library(MetBrewer) #for colors on ggplot
+library(forcats) #this might help with ordering x-axes for graphs
+library(ggpubr)
+library(lattice)#for histograms
+
+```
+
+## Wing Length
+
+This is a quick look at the wing lengths for UW and LSTM data. We have a few broad questions: 
+
+* How do our variables (timepoint, uni, treatment, origin of stock, and the interactions between them) affect wing length?
+* Which statistical tests are most appropriate to answer these questions? 
+* How can we visualize these data to tell a true and compelling narrative?
+
+
+
+To-do list: 
+
+* Finish all the stat comparisons desired and add to the google sheet
+* Move the stat comparisons to be next to their corresponding graph?? Maybe even add significance to stats here? 
+
+
+```{r import, include = FALSE}
+
+
+wing_length <-read_csv("../data/wing_length.csv")
+head(wing_length)
+tail(wing_length)
+wing_length <- as.data.frame(wing_length)
+wing_length[sapply(wing_length, is.character)] <- lapply(wing_length[sapply(wing_length, is.character)], as.factor)
+
+```
+
+
+# Stats
+Order of operations: 
+
+1. Check assumptions for parametric stats (look at histograms, residuals)
+2. If assumptions met for parametric stats, run linear model lm()
+3. If assumptions not met, use kruskal-wallis and Dunn's
+
+How to choose which chunks of data use? 
+
+* Think of which comparisons are biologically relevant. Does it make sense to compare LSTM mismatch 6month to UW match d10? No. So don't run a test with all the unique identifiers, you'll lose too much power. 
+* OR - do run a test with all of the things thrown in there and just pick out the comparisons of interest, but know you're only getting the strongest trends due to loss of power. 
+
+In my case, here's what I plan to test: 
+
+* Globally, does timepoint affect wing length? 
+* Globally, does Uni affect wing length?
+* Globally, does treatment (match/mismatch)affect wing length? How does this interact with uni? 
+
+
+
+```{r stats}
+
+#test assumptions for parametric stats
+
+library(car)
+
+#run the whole chunk below together 
+par(mfrow = c(1,2)) #makes a 2-paned plots
+qqnorm( residuals(lm(wing_length ~ timepoint, data= wing_length)),pch=1,frame=FALSE) #build residiual plots
+qqline( residuals(lm(wing_length ~ timepoint, data= wing_length)),lwd=1) #put a line on that residual plot. MUST BE RUN WITH THE LINE ABOVE
+plot(fitted(lm(wing_length ~ timepoint, data= wing_length)),
+  residuals(lm(wing_length ~ timepoint, data= wing_length)),xlab="fitted", 
+  ylab= "raw residual",main= "test", abline(h=0, lty=2)) #Approved. No weird scattering. The data are weird on the x-axis b/c there's only one fitted value for each category - ie. there's only one mean for 0h, or 24h, and all the residuals are showing spread from there. 
+plot(histogram(wing_length$wing_length)) #this is a histogram, looks normal
+car::boxCox(lm(wing_length ~ timepoint, data = wing_length)) 
+#looks like the max here is around 0.25, transform not required 
+
+
+#conclusion - proceed with linear model 
+
+
+wing_length_trim <- select(wing_length, -pic_batch)
+wing_length_trim <- select(wing_length_trim, -collection_date)
+class(wing_length_trim$wing_length)
+
+#now have an object with any n/a values removed. 
+
+head(wing_length)
+class(wing_length$timepoint)
+
+
+#with all fixed effects
+lmTime <- lm(wing_length ~ uni*treatment + timepoint, data = wing_length)
+summary(lmTime)
+
+#First, UW wings are smaller than LSTM wings. (uni)
+#Next, treatment_mismatch on its own is not significant, marginal p of 0.073
+#Timepoints d10, d30, and mo6 have bigger wings than the unfrozen timepoint 
+#and finally, university and mismatch treatment significantly interact!! 
+#so mismatch have smaller wings in UW but not in LSTM 
+
+#Can we get a p value for the comparison between uw-match and uw-mismtach? yes>>>  
+#eemeans for contrasts 
+library(emmeans)
+
+emm <- emmeans(lmTime, ~ treatment | uni)
+pairs(emm)
+
+```
+
+
+# Graph it all! 
+
+Troubleshooting the graph order and colors on the way to plotting every single full_id on its own. 
+
+
+```{r plotAll}
+#reorder
+#wing_length$treatment <- factor(wing_length$treatment, c("fresh", "24h", "d10", "d16 away", "d16 home", "d30 away", "d30 home", "mo6 away", "mo6 home"), ordered = TRUE)
+#obsolete, made a new variable called timepoint_order
+#may get weird with the different away/home tx and the UW vs LSTM 
+
+
+#wing_length$timepoint <- factor(wing_length$timepoint, c("fresh", "24h", "d10", "d16 away", "d16 home", "d30 away", "d30 home", "mo6 away", "mo6 home"), ordered = TRUE)
+
+levels(wing_length$full_id)
+
+
+wing_length$full_id <- factor(wing_length$full_id, c("UW-fresh", "UW-24h", "UW-d10", "UW-d16 away", "UW-d16 home", "UW-d30 away", "UW-d30 home", "UW-mo6 away", "UW-mo6 home", "LSTM-fresh", "LSTM-24h", "LSTM-d10", "LSTM-d16 away", "LSTM-d16 home", "LSTM-d30 away", "LSTM-d30 home", "LSTM-mo6 away", "LSTM-mo6 home"), ordered = TRUE)
+#ok - so i manually changed the order of factors. Turns out it still has the same problem of colorign the "fresh" samples between the d30 and mo6 samples. 
+#so i could've just used the first line that has fct_reorder. Let's stick with that to keep it simple. 
+
+#p <- ggplot(wing_length, aes(x = fct_reorder(full_id, graph_order), y = wing_length))+
+  #this also reorders correctly, but the color order is wack and the x axis labels are off by one. 
+
+
+
+p <- ggplot(wing_length, aes(x = full_id, y = wing_length))+
+  geom_boxplot()+
+  aes(fill=timepoint)+
+  scale_fill_manual(values = met.brewer("Tam", 6))+
+  theme_pubr() +
+  theme(legend.position="none") +
+  theme(axis.text.x = element_text(angle = 45, size = 13, vjust = 0.5))+
+  geom_jitter(width = 0.2)+
+  ggtitle("Wing length for all cryopresrvation treatments")
+
+  
+p
+
+
+
+```
+
+
+
+
+
+
+# Wing length by University (UW vs LSTM)
+
+
+
+```{r byUni}
+p <- ggplot(wing_length, aes(x = uni, y = wing_length))+
+  geom_boxplot()+
+  aes(fill=uni)+
+  scale_fill_manual(values = c("#aadce0ff", "#b6dfaeff"))+
+  theme_pubr() +
+  theme(axis.text.x = element_text(angle = 45, size = 13, vjust = 0.5))+
+  geom_jitter(width = 0.2)+
+  theme(legend.position="none") +
+  ggtitle("Wing length by university")
+  
+p
+
+#clearly looks liek UW moz have smaller wings, should NOT make comparisons across universities
+```
+
+# Wing length by duration of cryopreservation 
+
+
+
+```{r byTimepoint}
+
+
+q <- ggplot(wing_length, aes(x = timepoint, y = wing_length))+
+  geom_boxplot()+
+  aes(fill=timepoint)+
+  theme_pubr() +
+   scale_fill_manual(values = c("#b6dfaeff", "#aadce0", "#87b6c8", "#6490b0","#406a98", "#1e466e" )) +
+  theme(axis.text.x = element_text(angle = 45, size = 13, vjust = 0.5))+
+  geom_jitter(width = 0.2)+
+  ggtitle("Wing length by length of cryostock freeze before use ")+
+  theme(legend.position="none") 
+
+  
+
+q
+
+#ggsave("./CryoWing_timepoint_boxplot.pdf", height=4, width=6, device="pdf")
+
+
+#no immediate red flags in terms of development - frozen donor pools don't generate adults with tiny wings 
+
+```
+
+#Wing Length by treatment (matched vs mismatched microbiome transplant)
+
+
+```{r byTx}
+q <- ggplot(wing_length, aes(x = treatment, y = wing_length))+
+  geom_boxplot()+
+  aes(fill=treatment)+
+  theme_pubr() +
+  theme(legend.position="none") +
+  scale_fill_manual(values = met.brewer("Tam", 2))+
+  theme(axis.text.x = element_text(angle = 45, size = 13, vjust = 0.5))+
+  geom_jitter(width = 0.2)+
+  ggtitle("Wing length by treatment")
+  
+  
+q
+#ggsave("./CryoWing_treatment_boxplot.pdf", height=4, width=6, device="pdf")
+
+#no big dif on a global scale 
+```
+
+#Wing length by uni_tx 
+
+Goal: Did the swap treatment affect adult body size? Did that effect differ between the UW vs LSTM mosquitoes? 
+
+First, consider whether LSTM vs UW mosquitoes generally have different body sizes. (yes, they do!)
+Then, compare the match/mismatch treatments within each university. 
+
+
+
+```{r}
+
+
+global_ttest <- t.test(wing_length ~ uni, data = wing_length)
+#yes! Signficant differences between UW and LSTM wings, so we need to take into account when we make conclusions about match vs mismatch treatment. 
+
+
+p <- ggplot(wing_length, aes(x = uni_tx, y = wing_length))+
+  geom_boxplot()+
+  aes(fill=uni)+
+  theme_pubr() +
+  theme(legend.position="none") +
+  scale_fill_manual(values = c("#a6cee3", "#1f78b4"))+
+  facet_wrap(~uni, scales = "free_x", nrow = 1) +
+  theme(axis.text.x = element_text(angle = 45, size = 13, vjust = 0.5))+
+  #geom_jitter(width = 0.2)+
+  ggtitle("Wing length by treatment")
+  
+p
+
+#ggsave("./plots/wing_length_unitx.pdf", height=5, width=4, device="pdf") 
+
+#stats! Ttest to compare between treatments, separateed by university because we know that LSTM mosquitoes are inherently bigger. 
+wings_LSTM <- filter(wing_length, uni == "LSTM")
+wings_UW <- filter(wing_length, uni == "UW") 
+
+#ok, so check for equal vairance between groups 
+var.test(wing_length ~ uni_tx, wings_LSTM, 
+         alternative = "two.sided")
+#shit, the variance is not equal to 1 p = 0.0288
+var.test(wing_length ~ uni_tx, wings_UW, 
+         alternative = "two.sided")
+#ok, the variance on these is equal, but I don't want to use different tests for essentially the same comparison. 
+#turns out  t.test() assumes unequal variances,so that's good (welch's ttest). Go with that since it seems to be well-trusted
+#http://daniellakens.blogspot.com/2015/01/always-use-welchs-t-test-instead-of.html
+
+
+t.test(wing_length ~ uni_tx, data = wings_LSTM) # p = 0.05653, no difference 
+t.test(wing_length ~ uni_tx, data = wings_UW) # p = 0.03943, significant! UW-match mosquitoes have bigger wings than UW-mismatch mosquitoes. 
+
+
+
+
+```
+
+
+
+# Summary stats
+
+Basic stuff - print out tables for the mean, median, sd of each sample. Also subset by different variables of interest. Also use this as a logic check for why my x-axis is so whack 
+Make smaller dataframes to plot other questions of interest - particuarly, group by:
+
+* uni (institution where experiemnt was performed)
+* timepoint (aggregated across all unis at tx, does the duration of freeze matter for development params?)
+* treatment (does a mismatched microbiome have an effect?)
+```{r}
+wing_length %>% group_by(uni) %>% summarise(mean(wing_length),
+                                              median(wing_length),
+                                              sd(wing_length),
+                                              n_distinct(sample_id))
+              
+wing_length %>% group_by(treatment) %>% summarise(mean(wing_length),
+                                              median(wing_length),
+                                              sd(wing_length),
+                                              n_distinct(sample_id))
+#slightly higher mean on mismatched samples!
+
+wing_length %>% group_by(timepoint) %>% summarise(mean(wing_length),
+                                              median(wing_length),
+                                              sd(wing_length),
+                                              n_distinct(sample_id))
+
+#this one is a good summary table. Consider this a quick glance at each of the groups, separated in a logical way (i.e. each combo of timepoint/treatment/uni gets its own row)
+summary_table <- wing_length %>% group_by(full_id) %>% summarise(mean(wing_length),
+                                              median(wing_length),
+                                              sd(wing_length),
+                                              n_distinct(sample_id))
+
+
+
+
+```
+
+
+
+
+
+

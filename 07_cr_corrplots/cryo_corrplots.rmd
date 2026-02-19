@@ -1,0 +1,742 @@
+---
+title: "cryo_corrplots"
+author: "Holly Nichols"
+date: "2025-02-25"
+output: html_document
+---
+
+**Goal:** Determine whether there are any interactions that hold up within UW samples but not LSTM samples and vice versa 
+
+Elizabethkingia goals: 
+
+* Are there any ASVs correlated with Elizabethkingia relative abundance? Why might it dominate in some samples/timepoints but not others? 
+* Can Elizabethkingia abundance in adults be predicted by corresponding water/larvae samples? 
+
+
+```{r setup, include=FALSE}
+
+
+library(phyloseq)
+library(tidyverse)
+library(corrplot)
+library(rstatix) #for stats on corrplot 
+
+ps.filled = readRDS("../data/phyloseq/crPSFilled")
+#4493 taxa and 595 samples 
+
+
+
+```
+
+#Spearman correlation
+
+
+
+Def include across multiple timepoints, we want to see trends robust to multiple thaw events
+
+UW-match adults (most interested in Elizabethkingia in this one)
+UW-mismatch adults 
+LSTM-match adults 
+LSTM-mismatch adults 
+
+
+
+Try it first with just 25 of the most abundant ASVs
+
+
+#UW-match 
+AF8
+
+```{r}
+
+#generate phyloseq object of interest
+ps.uw_match_adults <- subset_samples(ps.filled, sample_type == "adult" & uni_tx == "UW-match")
+
+
+
+
+
+ps.uw_match_adults_norm  = transform_sample_counts(ps.uw_match_adults, function(x) x / sum(x) )
+
+#now separate out the top 25 ASVs in this dataset 
+read_counts <- ps.uw_match_adults %>% 
+    taxa_sums() %>% 
+    as.data.frame() %>% 
+    rownames_to_column() %>% 
+    set_names(c("ASV", "reads"))
+
+read_counts <- read_counts[order(read_counts$reads, decreasing = TRUE),]
+
+
+top_25 <- slice(read_counts, 1:25)
+top_25_asvs <- top_25$ASV   
+
+#ok, so let's subset our physeq obj first, then unlist
+
+ps.top_25_uw_match_adults<- prune_taxa(top_25_asvs, ps.uw_match_adults_norm) #keep only the ASVs in top_25_mother object 
+
+
+#corr wants just the OTU table - which may need to be transposed
+
+com = ps.top_25_uw_match_adults %>% otu_table() %>% t() 
+
+
+cc_uwma = cor(com, method = "spearman")  
+
+
+
+#have it redo the colname and rownames (default is just ASV labels)
+taxtab <- ps.uw_match_adults %>% tax_table() %>% as.data.frame %>% rownames_to_column(var = "ASV") #harvest tax info
+merged <- left_join(top_25,taxtab, by = "ASV") #now join tax info to your df of ASVs kept 
+
+
+
+#now need to rearrange genus by colnames(cc)
+cc_names <- colnames(cc_uwma)
+
+merged <- merged %>%
+  mutate(ASV = factor(ASV, levels = cc_names)) %>%  # Set ASV order based on cc_names
+  arrange(ASV)  # Sort the dataframe
+
+#plot with ASV labels
+corrplot(cc_uwma, tl.col = "red", order = "hclust", hclust.method = "average", 
+         addrect = 4, 
+         tl.cex = 0.6, #ASV text size 
+         title = "UW - match - adults")
+
+
+
+#plot with Genus labels, highlight comamonas and include part of ASV label 
+
+merged_temp  <- merged %>% 
+  mutate(genus_com = case_when(
+    Genus == "Comamonas_F_589250" ~ paste0(Genus, "____*", substr(ASV, start = 1, stop = 5), "*"),
+    TRUE ~ Genus
+  ))
+   
+
+
+
+colnames(cc_uwma) <- merged_temp$genus_com
+rownames(cc_uwma) <- merged_temp$genus_com
+
+#plot with Genus labels
+
+
+# pdf("./plots/corrplots/corr_uw_match_adults.pdf")
+# corrplot(cc_uwma, tl.col = "black", order = "hclust", hclust.method = "average", 
+#          addrect = 4, 
+#          tl.cex = 0.8, #ASV text size 
+#          title = "UW - match adults")
+# dev.off()
+
+
+
+```
+
+
+#UW - Mismatch - Adults 
+AF8
+
+```{r}
+
+#generate phyloseq object of interest
+ps.uw_mismatch_adults <- subset_samples(ps.filled, sample_type == "adult" & uni_tx == "UW-mismatch")
+
+
+
+ps.uw_mismatch_adults_norm  = transform_sample_counts(ps.uw_mismatch_adults, function(x) x / sum(x) )
+
+#now separate out the top 25 ASVs in this dataset 
+read_counts <- ps.uw_mismatch_adults %>% 
+    taxa_sums() %>% 
+    as.data.frame() %>% 
+    rownames_to_column() %>% 
+    set_names(c("ASV", "reads"))
+
+read_counts <- read_counts[order(read_counts$reads, decreasing = TRUE),]
+
+
+top_25 <- slice(read_counts, 1:25)
+top_25_asvs <- top_25$ASV   
+
+#ok, so let's subset our physeq obj first, then unlist
+
+ps.top_25_uw_mismatch_adults<- prune_taxa(top_25_asvs, ps.uw_mismatch_adults_norm) #keep only the ASVs in top_25_mother object 
+
+
+#corr wants just the OTU table - which may need to be transposed
+
+com = ps.top_25_uw_mismatch_adults %>% otu_table() %>% t() 
+
+
+cc_uw_mismatch = cor(com, method = "spearman")  
+
+#have it redo the colname and rownames (default is just ASV labels)
+taxtab <- ps.uw_mismatch_adults %>% tax_table() %>% as.data.frame %>% rownames_to_column(var = "ASV") #harvest tax info
+merged <- left_join(top_25,taxtab, by = "ASV") #now join tax info to your df of ASVs kept 
+
+
+
+#now need to rearrange genus by colnames(cc)
+cc_names <- colnames(cc_uw_mismatch)
+
+merged <- merged %>%
+  mutate(ASV = factor(ASV, levels = cc_names)) %>%  # Set ASV order based on cc_names
+  arrange(ASV)  # Sort the dataframe
+
+#plot with ASV labels
+corrplot(cc_uw_mismatch, tl.col = "red", order = "hclust", hclust.method = "average", 
+         addrect = 4, 
+         tl.cex = 0.8, #ASV text size 
+         title = "uw_mismatch - adults")
+
+
+
+
+
+#plot with Genus labels, highlight comamonas and include part of ASV label 
+
+merged_temp  <- merged %>% 
+  mutate(genus_com = case_when(
+    Genus == "Comamonas_F_589250" ~ paste0(Genus, "____*", substr(ASV, start = 1, stop = 5), "*"),
+    TRUE ~ Genus
+  ))
+   
+
+
+
+colnames(cc_uw_mismatch) <- merged_temp$genus_com
+rownames(cc_uw_mismatch) <- merged_temp$genus_com
+
+
+
+# 
+# pdf("./plots/corrplots/corr_uw_mismatch_adults.pdf")
+# corrplot(cc_uw_mismatch, tl.col = "black", order = "hclust", hclust.method = "average", 
+#          addrect = 4, 
+#          tl.cex = 0.8, #ASV text size 
+#          title = "UW-mismatch adults")
+# 
+# dev.off()
+
+
+
+
+```
+
+
+
+
+# LSTM-match adults 
+AF7
+
+```{r}
+
+
+#generate phyloseq object of interest
+ps.lstm_match_adults <- subset_samples(ps.filled, sample_type == "adult" & uni_tx == "LSTM-match")
+
+
+
+ps.lstm_match_adults_norm  = transform_sample_counts(ps.lstm_match_adults, function(x) x / sum(x) )
+
+#now separate out the top 25 ASVs in this dataset 
+read_counts <- ps.lstm_match_adults %>% 
+    taxa_sums() %>% 
+    as.data.frame() %>% 
+    rownames_to_column() %>% 
+    set_names(c("ASV", "reads"))
+
+read_counts <- read_counts[order(read_counts$reads, decreasing = TRUE),]
+
+
+top_25 <- slice(read_counts, 1:25)
+top_25_asvs <- top_25$ASV   
+
+#ok, so let's subset our physeq obj first, then unlist
+
+ps.top_25_lstm_match_adults<- prune_taxa(top_25_asvs, ps.lstm_match_adults_norm) #keep only the ASVs in top_25_mother object 
+
+
+#corr wants just the OTU table - which may need to be transposed
+
+com = ps.top_25_lstm_match_adults %>% otu_table() %>% t() 
+
+
+cc_lstm_match = cor(com, method = "spearman")  
+
+#have it redo the colname and rownames (default is just ASV labels)
+taxtab <- ps.lstm_match_adults %>% tax_table() %>% as.data.frame %>% rownames_to_column(var = "ASV") #harvest tax info
+merged <- left_join(top_25,taxtab, by = "ASV") #now join tax info to your df of ASVs kept 
+
+
+
+#now need to rearrange genus by colnames(cc)
+cc_names <- colnames(cc_lstm_match)
+
+merged <- merged %>%
+  mutate(ASV = factor(ASV, levels = cc_names)) %>%  # Set ASV order based on cc_names
+  arrange(ASV)  # Sort the dataframe
+
+#plot with ASV labels
+corrplot(cc_lstm_match, tl.col = "red", order = "hclust", hclust.method = "average", 
+         addrect = 4, 
+         tl.cex = 0.6, #ASV text size 
+         title = "LSTM_match - adults")
+
+
+
+
+
+#plot with Genus labels, highlight comamonas and include part of ASV label 
+
+merged_temp  <- merged %>% 
+  mutate(genus_com = case_when(
+    Genus == "Comamonas_F_589250" ~ paste0(Genus, "____*", substr(ASV, start = 1, stop = 5), "*"),
+    TRUE ~ Genus
+  ))
+   
+
+
+
+colnames(cc_lstm_match) <- merged_temp$genus_com
+rownames(cc_lstm_match) <- merged_temp$genus_com
+
+
+
+# pdf("./plots/corrplots/corr_lstm_match_adults.pdf")
+# corrplot(cc_lstm_match, tl.col = "black", order = "hclust", hclust.method = "average", 
+#          addrect = 4, 
+#          tl.cex = 0.8, #ASV text size 
+#          title = "LSTM - match adults")
+# 
+# dev.off()
+
+
+```
+
+#LSTM - mismatch - adults 
+
+AF7
+Main question - is this different in some way from LSTM-match adults? 
+Super cool! Really similar resuts in terms of things that are antagonistsic with Elizabethkingia 
+
+```{r}
+
+
+#generate phyloseq object of interest
+ps.lstm_mismatch_adults <- subset_samples(ps.filled, sample_type == "adult" & uni_tx == "LSTM-mismatch")
+
+
+
+ps.lstm_mismatch_adults_norm  = transform_sample_counts(ps.lstm_mismatch_adults, function(x) x / sum(x) )
+
+#now separate out the top 25 ASVs in this dataset 
+read_counts <- ps.lstm_mismatch_adults %>% 
+    taxa_sums() %>% 
+    as.data.frame() %>% 
+    rownames_to_column() %>% 
+    set_names(c("ASV", "reads"))
+
+read_counts <- read_counts[order(read_counts$reads, decreasing = TRUE),]
+
+
+top_25 <- slice(read_counts, 1:25)
+top_25_asvs <- top_25$ASV   
+
+#ok, so let's subset our physeq obj first, then unlist
+
+ps.top_25_lstm_mismatch_adults<- prune_taxa(top_25_asvs, ps.lstm_mismatch_adults_norm) #keep only the ASVs in top_25_mother object 
+
+
+#corr wants just the OTU table - which may need to be transposed
+
+com = ps.top_25_lstm_mismatch_adults %>% otu_table() %>% t() 
+
+
+cc_lstm_mismatch = cor(com, method = "spearman")  
+
+
+#have it redo the colname and rownames (default is just ASV labels)
+taxtab <- ps.lstm_mismatch_adults %>% tax_table() %>% as.data.frame %>% rownames_to_column(var = "ASV") #harvest tax info
+merged <- left_join(top_25,taxtab, by = "ASV") #now join tax info to your df of ASVs kept 
+
+
+
+#now need to rearrange genus by colnames(cc)
+cc_names <- colnames(cc_lstm_mismatch)
+
+merged <- merged %>%
+  mutate(ASV = factor(ASV, levels = cc_names)) %>%  # Set ASV order based on cc_names
+  arrange(ASV)  # Sort the dataframe
+
+#plot with ASV labels
+corrplot(cc_lstm_mismatch, tl.col = "red", order = "hclust", hclust.method = "average", 
+         addrect = 4, 
+         tl.cex = 0.6, #ASV text size 
+         title = "lstm_mismatch - adults")
+
+corrplot(cc_lstm_mismatch, tl.col = "black", order = "hclust", hclust.method = "average", 
+         addrect = 4, 
+         tl.cex = 0.6, #ASV text size 
+         title = "LSTM-mismatch adults")
+
+
+#ok let's actually break in and change just teh Comomonas labels - add __ (the first 5 characters of the ASV label )
+
+merged_temp  <- merged %>% 
+  mutate(genus_com = case_when(
+    Genus == "Comamonas_F_589250" ~ paste0(Genus, "____*", substr(ASV, start = 1, stop = 5), "*"),
+    TRUE ~ Genus
+  ))
+   
+
+
+
+colnames(cc_lstm_mismatch) <- merged_temp$genus_com
+rownames(cc_lstm_mismatch) <- merged_temp$genus_com
+
+#plot with Genus labels
+
+
+# 
+# pdf("./plots/corrplots/corr_lstm_mismatch_adults.pdf")
+# corrplot(cc_lstm_mismatch, tl.col = "black", order = "hclust", hclust.method = "average", 
+#          addrect = 4, 
+#          tl.cex = 0.8, #ASV text size 
+#          title = "LSTM-mismatch adults")
+# 
+# dev.off()
+
+
+
+
+
+
+
+```
+
+
+#Hypothesis testing 
+
+
+AF9
+
+Simplify - Elizabethkingia vs Comamonas in LSTM-match, LSTM-mismatch, UW-match, UW-mismatch 
+
+Then use BH correction for multiple comparisons 
+
+
+```{r}
+
+#get vectors for relabund of dif ASVs across each sample 
+
+
+relabund_matrix <- ps.top_25_lstm_mismatch_adults %>% otu_table() %>% t() %>%data.frame()
+head(relabund_matrix)
+
+colnames(relabund_matrix)
+
+#Elizabethkingia ASV name 
+#7e18a39dd964eb207545655ebe71a459
+
+# Antagonistic Comamonas ASV name 
+# d32e579b3ae7b2aae8d5bf9f027c29af
+
+#oo, also just plot them as scatterplots with lines and see how it looks for each uni_tx 
+
+
+eliz <- relabund_matrix$X7e18a39dd964eb207545655ebe71a459
+comamonas <- relabund_matrix$d32e579b3ae7b2aae8d5bf9f027c29af
+
+
+
+cor.test(eliz,comamonas, method = "spearm")
+#p value=  1.412e-09
+#rho = 0.616915
+
+```
+
+
+# ELizabethkingia and comamonas_d32e5 (synergystic) in uni_tx adults
+
+```{r}
+
+#define a function to correlate elizabethkingnia and comamonas ASVs within each uni_tx 
+correlate_eliz_com <- function(ps) {
+  #pull out relevant 
+  eliz <- ps %>% otu_table() %>% t() %>% data.frame() %>% .$X7e18a39dd964eb207545655ebe71a459
+  comamonas <- ps %>% otu_table() %>% t() %>% data.frame() %>% .$d32e579b3ae7b2aae8d5bf9f027c29af
+
+  #test correlation
+  corrtest <- cor.test(eliz,comamonas, method = "spearm", exact = FALSE)
+  
+  p_value <- corrtest$p.value
+  rho_estimate <- corrtest$estimate
+  
+  #pull out the p value and spearman rho 
+  df <- data.frame(rho_estimate, p_value, row.names  =  unique(sample_data(ps)$uni_tx))    
+  return(df)
+  #return a df 
+}
+  
+
+df_lstm_match <- correlate_eliz_com(ps.top_25_lstm_match_adults)
+df_lstm_mismatch <- correlate_eliz_com(ps.top_25_lstm_mismatch_adults)
+#df_uw_match <- correlate_eliz_com(ps.top_25_uw_match_adults) #insufficient elizabethkingia reads to correlate
+df_uw_mismatch <- correlate_eliz_com(ps.top_25_uw_mismatch_adults)
+
+big_df <- dplyr::bind_rows(df_lstm_match, df_lstm_mismatch, df_uw_mismatch)
+#cool! Currenlty unadjusted 
+
+big_df$p_adj_BH <- p.adjust(big_df$p_value, method ="BH")
+big_df$p_adj_bonferroni <- p.adjust(big_df$p_value, method ="bonferroni")
+
+#conclusion - LSTM both VERY significant, , US-mismatch is noT significant 
+
+
+
+
+```
+
+
+## And how abundant are those Comamonas in each uni_tx? 
+
+
+
+##  Manuscript verison of relative abundance plots, Additional File 11 
+eliz - 7e18a39dd964eb207545655ebe71a459
+positive corr - d32e579b3ae7b2aae8d5bf9f027c29af
+negative corr - 16da9716b4d7c3c9c904f3f799d67dfe
+
+```{r}
+ps.relabund <- transform_sample_counts(ps.filled, function(x) { x/sum(x) })
+melt_relabund <- psmelt(ps.relabund) #Commented out b/c it takes forever to run 
+
+
+
+dfEliz <- filter(melt_relabund, OTU == "7e18a39dd964eb207545655ebe71a459") %>% filter(sample_type == "adult")
+
+
+
+StackedBarPlot_eliz<- dfEliz %>%
+   ggplot(aes(x =sample_id, y = Abundance, fill = Genus)) +
+   geom_bar(stat = "identity", fill = "blue") +
+  labs(x = "",y = "Relative Abundance",title = "Elizabethkingia Relative Abundance")+ 
+   facet_wrap(~interaction(uni_tx,sample_type), scales = "free_x", ncol = 4) +
+  theme_cowplot() + 
+  theme(text = element_text(size=20), axis.text.x=element_blank(),axis.ticks.x=element_blank()) +
+   theme(strip.text.x = element_text(size = 8))+ 
+  scale_y_continuous(expand = c(0,0.001))+# move x-axis up so it's nearly touching bars but not obscuring 
+    coord_cartesian(ylim=c(0,1))
+StackedBarPlot_eliz
+
+#ggsave("./plots/unitxCORR_ELIZ.pdf", height=5, width=6, device="pdf") 
+
+
+dfComAnt <- filter(melt_relabund, OTU == "16da9716b4d7c3c9c904f3f799d67dfe") %>% filter(sample_type == "adult")
+
+
+
+StackedBarPlot_ant <- dfComAnt %>%
+   ggplot(aes(x =sample_id, y = Abundance, fill = Genus)) +
+   geom_bar(stat = "identity", fill = "blue") +
+  labs(x = "",y = "Relative Abundance",title = "Comamonas_16da Relative Abundance")+ 
+   facet_wrap(~interaction(uni_tx,sample_type), scales = "free_x", ncol = 4) +
+  theme_cowplot() + 
+  theme(text = element_text(size=20), axis.text.x=element_blank(),axis.ticks.x=element_blank()) +
+   theme(strip.text.x = element_text(size = 8))+ 
+  scale_y_continuous(expand = c(0,0.001))+# move x-axis up so it's nearly touching bars but not obscuring 
+    coord_cartesian(ylim=c(0,1))
+StackedBarPlot_ant
+
+#ggsave("./plots/unitxCORR_Comamonas_ant_16da9.pdf", height=5, width=6, device="pdf") 
+
+#interesting, the antagonist Comamonas is present in kinda all the adult types, but is only big in the larvae from UW-match, whcih is where it never showed up in adults. 
+
+
+dfComSyn <- filter(melt_relabund, OTU == "d32e579b3ae7b2aae8d5bf9f027c29af") %>% filter(sample_type == "adult")
+
+
+StackedBarPlot_syn <- dfComSyn %>%
+   ggplot(aes(x =sample_id, y = Abundance, fill = Genus)) +
+   geom_bar(stat = "identity", fill = "blue") +
+  labs(x = "",y = "Relative Abundance",title = "Comamonas_d32e Relative Abundance")+ 
+   facet_wrap(~interaction(uni_tx,sample_type), scales = "free_x", ncol = 4) +
+  theme_cowplot() + 
+  theme(text = element_text(size=20), axis.text.x=element_blank(),axis.ticks.x=element_blank()) +
+   theme(strip.text.x = element_text(size = 8))+ 
+    scale_y_continuous(expand = c(0,0.001))+# move x-axis up so it's nearly touching bars but not obscuring 
+    coord_cartesian(ylim=c(0,1))
+
+StackedBarPlot_syn
+#ggsave("./plots/unitxCORR_Comamonas_syn_d32d5.pdf", height=5, width=6, device="pdf") 
+
+
+ggarrange(StackedBarPlot_eliz,StackedBarPlot_syn,StackedBarPlot_ant, ncol = 1)
+#ggsave("./plots/unitxCORR_relabunds.pdf", height=7, width=10, device="pdf") 
+
+
+
+```
+
+
+#test Elizabethkingia/Comamonas_d32e5 corr in Water
+
+AF 9 
+
+
+```{r}
+
+#get ps objects 
+ps.lstm_match_water <- subset_samples(ps.filled, sample_type == "water" & uni_tx == "LSTM-match")
+ps.lstm_mismatch_water <- subset_samples(ps.filled, sample_type == "water" & uni_tx == "LSTM-mismatch")
+ps.uw_match_water <- subset_samples(ps.filled, sample_type == "water" & uni_tx == "UW-match")
+ps.uw_mismatch_water <- subset_samples(ps.filled, sample_type == "water" & uni_tx == "UW-mismatch")
+
+
+
+
+
+df_lstm_match <- correlate_eliz_com(ps.lstm_match_water)
+df_lstm_mismatch <- correlate_eliz_com(ps.lstm_mismatch_water)
+#df_uw_match <- correlate_eliz_com(ps.uw_match_water) #insufficient reads to correlate
+df_uw_mismatch <- correlate_eliz_com(ps.uw_mismatch_water)
+
+water_df <- dplyr::bind_rows(df_lstm_match, df_lstm_mismatch, df_uw_mismatch)
+
+water_df$p_adj_BH <- p.adjust(water_df$p_value, method ="BH")
+water_df$p_adj_bonferroni <- p.adjust(water_df$p_value, method ="bonferroni")
+
+#nothing significant here 
+
+```
+
+
+#larvae Elizabethkingia vs comamonas_d32e5 
+
+AF 9 
+
+```{r}
+ps.lstm_match_larvae <- subset_samples(ps.filled, sample_type == "larvae" & uni_tx == "LSTM-match")
+ps.lstm_mismatch_larvae <- subset_samples(ps.filled, sample_type == "larvae" & uni_tx == "LSTM-mismatch")
+ps.uw_match_larvae <- subset_samples(ps.filled, sample_type == "larvae" & uni_tx == "UW-match")
+ps.uw_mismatch_larvae <- subset_samples(ps.filled, sample_type == "larvae" & uni_tx == "UW-mismatch")
+
+
+
+
+
+df_lstm_match <- correlate_eliz_com(ps.lstm_match_larvae)
+df_lstm_mismatch <- correlate_eliz_com(ps.lstm_mismatch_larvae)
+#df_uw_match <- correlate_eliz_com(ps.uw_match_larvae) #insuficcent reads to correlate 
+df_uw_mismatch <- correlate_eliz_com(ps.uw_mismatch_larvae)
+
+larvae_df <- dplyr::bind_rows(df_lstm_match, df_lstm_mismatch, df_uw_mismatch)
+#cool! Currenlty unadjusted 
+
+larvae_df$p_adj_BH <- p.adjust(larvae_df$p_value, method ="BH")
+larvae_df$p_adj_bonferroni <- p.adjust(larvae_df$p_value, method ="bonferroni")
+#only UW-mismatch is significant here - and it's a positive correlation! 
+
+```
+
+
+
+#Correlate the putative antagonist! comamonas_16da9
+
+AF 10 
+
+```{r}
+
+
+#elizabethkingia 
+#X7e18a39dd964eb207545655ebe71a459
+#Comamonas, antagonist 
+#16da9716b4d7c3c9c904f3f799d67dfe
+
+
+correlate_eliz_com_2 <- function(ps) {
+  #pull out relevant 
+  eliz <- ps %>% otu_table() %>% t() %>% data.frame() %>% .$X7e18a39dd964eb207545655ebe71a459
+  comamonas <- ps %>% otu_table() %>% t() %>% data.frame() %>% .$X16da9716b4d7c3c9c904f3f799d67dfe
+
+  #test correlation
+  corrtest <- cor.test(eliz,comamonas, method = "spearm", exact = FALSE)
+  
+  p_value <- corrtest$p.value
+  rho_estimate <- corrtest$estimate
+  
+  #pull out the p value and spearman rho 
+  df <- data.frame(rho_estimate, p_value, row.names  =  unique(sample_data(ps)$uni_tx))    
+  return(df)
+  #return a df 
+}
+  
+
+
+
+df_lstm_match <- correlate_eliz_com_2(ps.top_25_lstm_match_adults)
+df_lstm_mismatch <- correlate_eliz_com_2(ps.top_25_lstm_mismatch_adults)
+#df_uw_match <- correlate_eliz_com_2(ps.top_25_uw_match_adults)
+df_uw_mismatch <- correlate_eliz_com_2(ps.top_25_uw_mismatch_adults)
+
+big_df <- dplyr::bind_rows(df_lstm_match, df_lstm_mismatch, df_uw_mismatch)
+#cool! Currenlty unadjusted 
+
+big_df$p_adj_BH <- p.adjust(big_df$p_value, method ="BH")
+big_df$p_adj_bonferroni <- p.adjust(big_df$p_value, method ="bonferroni")
+
+#neg corr in LSTM-match adn LSTM-mismatch, UW-mismatch p = 1
+
+
+
+
+```
+
+
+# Larvae - Comamonas antagonist 16da97
+
+AF 10 
+
+```{r}
+
+df_lstm_match <- correlate_eliz_com_2(ps.lstm_match_larvae)
+df_lstm_mismatch <- correlate_eliz_com_2(ps.lstm_mismatch_larvae)
+#df_uw_match <- correlate_eliz_com_2(ps.uw_match_larvae) #not enough eliz
+#df_uw_mismatch <- correlate_eliz_com_2(ps.uw_mismatch_larvae) #not enough comamonas
+
+larvae_df <- dplyr::bind_rows(df_lstm_match, df_lstm_mismatch)
+#cool! Currenlty unadjusted 
+
+larvae_df$p_adj_BH <- p.adjust(larvae_df$p_value, method ="BH")
+larvae_df$p_adj_bonferroni <- p.adjust(larvae_df$p_value, method ="bonferroni")
+
+#NOT significant 
+```
+
+# Water - Comamonas antagonist 16da97
+
+AF 10 
+
+```{r}
+
+
+df_lstm_match <- correlate_eliz_com_2(ps.lstm_match_water)#stdev 0 
+df_lstm_mismatch <- correlate_eliz_com_2(ps.lstm_mismatch_water)#stdev is - 
+#df_uw_match <- correlate_eliz_com_2(ps.uw_match_water) #
+df_uw_mismatch <- correlate_eliz_com_2(ps.uw_mismatch_water) #stdev is 0 on this one 
+
+water_df <- dplyr::bind_rows(df_lstm_match, df_lstm_mismatch, df_uw_mismatch)
+
+
+water_df$p_adj_BH <- p.adjust(water_df$p_value, method ="BH")
+water_df$p_adj_bonferroni <- p.adjust(water_df$p_value, method ="bonferroni")
+
+#huh- NA for all, not enough comaonas in water
+
+
+```
+
+

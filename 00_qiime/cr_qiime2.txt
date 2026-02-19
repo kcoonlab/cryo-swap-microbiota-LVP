@@ -1,0 +1,322 @@
+##### QIIME2 denoising and seq classification #####
+
+
+#using the conda environment specificed below (or equivalent): 
+conda activate qiime2-amplicon-2023.9
+# which is version q2cli version 2023.9.1
+
+#first import the data from biotech center  (fastqs) into a format usable by qiime (qza object)
+#will need to remove files that are not .fastq.gz (the multiqc report and the md5sum files)
+
+
+
+#### Import and visualize run 1, 2, and 3
+
+
+qiime tools import \
+  --type 'SampleData[PairedEndSequencesWithQuality]' \
+  --input-path cryo_seq_data_split/240105_M04026_0783_000000000-LCKRD \
+  --input-format CasavaOneEightSingleLanePerSampleDirFmt \
+  --output-path qiime_cr/demux-paired-end-1.qza
+
+qiime demux summarize \
+  --i-data qiime_cr/demux-paired-end-1.qza \
+  --o-visualization qiime_cr/demux-paired-end-1.qzv
+
+cd qiime_cr
+
+qiime tools view demux-paired-end-1.qzv
+
+
+
+#### IMPORT RUN 2 ####
+
+
+qiime tools import \
+  --type 'SampleData[PairedEndSequencesWithQuality]' \
+  --input-path ../cryo_seq_data_split/240105_M06411_0486_000000000-LCL27 \
+  --input-format CasavaOneEightSingleLanePerSampleDirFmt \
+  --output-path demux-paired-end-2.qza
+
+qiime demux summarize \
+  --i-data demux-paired-end-2.qza \
+  --o-visualization demux-paired-end-2.qzv
+
+qiime tools view demux-paired-end-2.qzv
+
+
+
+#### IMPORT RUN 3 ####
+qiime tools import \
+  --type 'SampleData[PairedEndSequencesWithQuality]' \
+  --input-path ../cryo_seq_data_split/240105_M06026_0661_000000000-LCKYB \
+  --input-format CasavaOneEightSingleLanePerSampleDirFmt \
+  --output-path demux-paired-end-3.qza
+
+qiime demux summarize \
+  --i-data demux-paired-end-3.qza \
+  --o-visualization demux-paired-end-3.qzv
+
+qiime tools view demux-paired-end-3.qzv
+
+
+########## Import summary ######
+#note that qiime lists the same numbers for R and F reads, so maybe these should really be doubled to represent the true number of seqs? or not b/c it's 2x250 and it's assumed ??
+
+#run 1: 9265453 sequences
+#minimum: 12 reads
+#median: 43052
+#mean:  	38767.585774
+#max: 138781
+
+#Run 2: 9114767 reads
+#minimum: 758
+#median: 37932
+#mean: 40873.394619
+#maximum: 512286
+
+#run 3: 8875459 reads
+#minimum: 192
+#median: 38020
+#mean:  	37929.311966
+#maximum: 354526
+
+##########DADA2
+#separate for each miseq run 
+
+
+
+##### run 1 dada2
+
+qiime dada2 denoise-paired \
+  --i-demultiplexed-seqs demux-paired-end-1.qza \
+  --p-trim-left-f  0\
+  --p-trim-left-r 0 \
+  --p-trunc-len-f 250 \
+  --p-trunc-len-r 230 \
+  --o-table table-1.qza \
+  --o-representative-sequences rep-seqs-1.qza \
+  --o-denoising-stats denoising-stats-1.qza
+
+
+qiime feature-table summarize \
+  --i-table table-1.qza \
+  --o-visualization table-1.qzv \
+  --m-sample-metadata-file ../cr-metadata.tsv
+
+
+qiime feature-table tabulate-seqs \
+  --i-data rep-seqs-1.qza \
+  --o-visualization rep-seqs-1.qzv
+
+qiime metadata tabulate \
+  --m-input-file denoising-stats-1.qza \
+  --o-visualization denoising-stats-1.qzv
+
+
+##### run2 dada2
+
+
+qiime dada2 denoise-paired \
+  --i-demultiplexed-seqs demux-paired-end-2.qza \
+  --p-trim-left-f  0\
+  --p-trim-left-r 0 \
+  --p-trunc-len-f 250 \
+  --p-trunc-len-r 220 \
+  --o-table table-2.qza \
+  --o-representative-sequences rep-seqs-2.qza \
+  --o-denoising-stats denoising-stats-2.qza
+
+  qiime feature-table summarize \
+  --i-table table-2.qza \
+  --o-visualization table-2.qzv \
+  --m-sample-metadata-file ../cr-metadata.tsv
+
+#Number of samples 	223
+#Number of features 	1,805
+#Total frequency 	4,932,136
+
+
+qiime feature-table tabulate-seqs \
+  --i-data rep-seqs-2.qza \
+  --o-visualization rep-seqs-2.qzv
+
+qiime metadata tabulate \
+  --m-input-file denoising-stats-2.qza \
+  --o-visualization denoising-stats-2.qzv
+
+
+
+###### run 3 dada2
+
+qiime dada2 denoise-paired \
+  --i-demultiplexed-seqs demux-paired-end-3.qza \
+  --p-trim-left-f  0\
+  --p-trim-left-r 0 \
+  --p-trunc-len-f 250 \
+  --p-trunc-len-r 235 \
+  --o-table table-3.qza \
+  --o-representative-sequences rep-seqs-3.qza \
+  --o-denoising-stats denoising-stats-3.qza
+
+
+qiime feature-table summarize \
+  --i-table table-3.qza \
+  --o-visualization table-3.qzv \
+  --m-sample-metadata-file ../cr-metadata.tsv
+
+
+qiime feature-table tabulate-seqs \
+  --i-data rep-seqs-3.qza \
+  --o-visualization rep-seqs-3.qzv
+
+qiime metadata tabulate \
+  --m-input-file denoising-stats-3.qza \
+  --o-visualization denoising-stats-3.qzv
+
+
+
+
+####### Merge paired ends 
+
+qiime feature-table merge \
+ --i-tables table-1.qza \
+ --i-tables run2_paired/table-2.qza \
+ --i-tables table-3.qza\
+ --o-merged-table dada2_all_paired/merged-paired-table.qza
+
+
+qiime feature-table merge-seqs \
+ --i-data rep-seqs-1.qza \
+ --i-data run2_paired/rep-seqs-2.qza \
+ --i-data rep-seqs-3.qza \
+ --o-merged-data dada2_all_paired/merged-paired-rep-seqs.qza
+
+
+ ##### Visualize merged data
+
+ qiime feature-table summarize \
+  --i-table dada2_all_paired/merged-paired-table.qza \
+  --o-visualization dada2_all_paired/merged-table.qzv \
+  --m-sample-metadata-file ../cr-metadata.tsv
+
+
+qiime feature-table tabulate-seqs \
+  --i-data dada2_all_paired/merged-paired-rep-seqs.qza \
+  --o-visualization dada2_all_paired/merged-paired-rep-seqs.qzv
+
+
+
+# Phylogeny and diversity metrics (will re-calculate in after decontam, this is first pass)
+
+cd dada2_all_paired
+
+qiime phylogeny align-to-tree-mafft-fasttree \
+  --i-sequences merged-paired-rep-seqs.qza \
+  --o-alignment aligned-rep-seqs.qza \
+  --o-masked-alignment masked-aligned-rep-seqs.qza \
+  --o-tree unrooted-tree.qza \
+  --o-rooted-tree rooted-tree.qza
+
+
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny rooted-tree.qza \
+  --i-table merged-paired-table.qza \
+  --p-sampling-depth 500 \
+  --m-metadata-file ../../cr-metadata.tsv \
+  --output-dir core-metrics-results-500
+
+
+
+
+########### CLASSIFY with greengenes2
+
+
+#based on code here: 
+#https://github.com/biocore/greengenes2/blob/main/scripts/classifier.sh#L31-L41
+#and greengenes2 announcement here 
+#https://forum.qiime2.org/t/introducing-greengenes2-2022-10/25291/6
+
+
+#Extract appropriate reads from classifier based on Kozich primers, finished in ~ 10minutes
+qiime feature-classifier extract-reads \
+    --i-sequences 2022.10.backbone.full-length.fna.qza\
+    --p-f-primer GTGCCAGCMGCCGCGGTAA --p-r-primer GGACTACHVGGGTWTCTAAT \
+    --p-read-orientation both \
+    --o-reads 2022.10.backbone.myprimers.fna.qza 
+ 
+
+
+#Train classifier ~20 minutes
+
+qiime feature-classifier fit-classifier-naive-bayes \
+    --i-reference-reads 2022.10.backbone.myprimers.fna.qza  \
+    --i-reference-taxonomy 2022.10.backbone.tax.qza \
+    --o-classifier 2022.10.backbone.myprimers.nb.qza
+
+#ok, so this is a trained classifier. how to use? 
+
+
+
+
+
+#classify, based on  https://github.com/qiime2/docs/blob/master/source/tutorials/feature-classifier.rst
+
+# Classify seqs, 10 mins to classify 
+qiime feature-classifier classify-sklearn \
+     --i-classifier 2022.10.backbone.myprimers.nb.qza \
+     --i-reads ../dada2_all_paired/merged-paired-rep-seqs.qza \
+     --o-classification taxonomy.myprimers.gg2.qza
+
+qiime metadata tabulate \
+     --m-input-file taxonomy.myprimers.gg2.qza \
+     --o-visualization taxonomy.qzv
+
+
+#export the tax table 
+qiime tools export \
+ --input-path taxonomy.myprimers.gg2.qza \
+ --output-path ../../phyloseq
+#this is the current taxonomy.qza file 
+
+
+
+######## Export to phyloseq 
+
+
+# Export table (otu_table)
+
+
+qiime tools export \
+  --input-path dada2_all_paired/merged-paired-table.qza \
+  --output-path ../phyloseq
+
+biom convert -i ../phyloseq/feature-table-dada2.biom -o ../phyloseq/otu_table-dada2.txt --to-tsv
+
+
+#export unrooted tree - will re-root upon import in R
+
+
+qiime tools export \
+--input-path dada2_all_paired/unrooted-tree.qza \
+--output-path ../phyloseq
+
+#export taxnomy (tax_table)
+
+
+
+qiime tools export \
+ --input-path classify/taxonomy-dada2.qza \
+ --output-path ../phyloseq
+
+
+#next, go to R and import these into a phyloseq object! 
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,450 @@
+﻿std_id,full_id,timepoint,graph_order,treatment,replicate,flask,sample_id,pic_batch,wing_length,uni,collection_date,stock_origin,uni_tx
+0h,UW-0h,0h,1,match,A2,1,0h A2,12_02_2022,2.61,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,A1,1,0h A1,12_02_2022,2.551,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,B1,2,0h B1,12_02_2022,2.489,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,B2,2,0h B2,12_02_2022,2.48,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,B3,2,0h B3,12_02_2022,2.482,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,B4,2,0h B4,12_02_2022,2.486,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,B5,2,0h B5,12_02_2022,2.513,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,B6,2,0h B6,12_02_2022,2.541,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,C1,3,0h C1,12_02_2022,2.605,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,C2,3,0h C2,12_02_2022,2.579,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,C3,3,0h C3,12_02_2022,2.626,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,C4,3,0h C4,12_02_2022,2.732,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,C5,3,0h C5,12_02_2022,2.586,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,C6,3,0h C6,12_02_2022,2.608,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,C7,4,0h C7,12_02_2022,2.628,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,D1,5,0h D1,12_02_2022,2.413,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,D2,5,0h D2,12_02_2022,2.388,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,D3,5,0h D3,12_02_2022,2.427,UW,,UW,UW-match
+0h,UW-0h,0h,1,match,D4,5,0h D4,12_02_2022,2.321,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,A1,6,24h A1,12_06_2022,2.541,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,A10,6,24h A10,12_06_2022,2.62,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,A2,6,24h A2,12_06_2022,2.645,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,A3,6,24h A3,12_06_2022,2.646,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,A4,6,24h A4,12_06_2022,2.573,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,A5,6,24h A5,12_06_2022,2.647,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,A6,6,24h A6,12_06_2022,2.674,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,A7,6,24h A7,12_06_2022,2.736,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,A8,6,24h A8,12_06_2022,2.656,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,A9,6,24h A9,12_06_2022,2.635,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,B1,7,24h B1,12_06_2022,2.779,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,B2,7,24h B2,12_06_2022,2.726,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,B3,7,24h B3,12_06_2022,2.743,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,B4,7,24h B4,12_06_2022,2.698,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,B5,7,24h B5,12_06_2022,2.745,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,B6,7,24h B6,12_06_2022,2.67,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,B7,7,24h B7,12_06_2022,2.669,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,B8,7,24h B8,12_06_2022,2.691,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,B9,7,24h B9,12_06_2022,2.647,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,C1,8,24h C1,12_06_2022,2.717,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,C2,8,24h C2,12_06_2022,2.668,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,C3,8,24h C3,12_06_2022,2.424,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,C4,8,24h C4,12_06_2022,2.393,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,C5,8,24h C5,12_06_2022,2.514,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,C6,8,24h C6,12_06_2022,2.642,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,C7,8,24h C7,12_06_2022,2.451,UW,,UW,UW-match
+24h,UW-24h,24h,2,match,C8,8,24h C8,12_06_2022,2.555,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,A1,9,d10 A1,12_02_2022,2.679,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,A10,9,d10 A10,12_02_2022,2.556,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,A3,9,d10 A3,12_02_2022,2.541,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,A4,9,d10 A4,12_02_2022,2.648,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,A5,9,d10 A5,12_02_2022,2.535,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,A6,9,d10 A6,12_02_2022,2.731,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,A8,9,d10 A8,12_02_2022,2.834,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,A9,9,d10 A9,12_02_2022,2.677,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,B1,10,d10 B1,12_02_2022,2.571,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,B10,10,d10 B10,12_02_2022,2.889,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,B11,10,d10 B11,12_02_2022,2.619,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,B2,10,d10 B2,12_02_2022,2.81,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,B3,10,d10 B3,12_02_2022,2.833,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,B4,10,d10 B4,12_02_2022,2.713,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,B5,10,d10 B5,12_02_2022,2.865,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,B6,10,d10 B6,12_02_2022,2.779,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,B7,10,d10 B7,12_02_2022,2.957,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,B8,10,d10 B8,12_02_2022,2.742,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,B9,10,d10 B9,12_02_2022,2.687,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,C1,11,d10 C1,12_02_2022,2.69,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,C10,11,d10 C10,12_02_2022,2.645,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,C2,11,d10 C2,12_02_2022,2.706,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,C3,11,d10 C3,12_02_2022,2.788,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,C4,11,d10 C4,12_02_2022,2.662,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,C5,11,d10 C5,12_02_2022,2.656,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,C6,11,d10 C6,12_02_2022,2.775,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,C7,11,d10 C7,12_02_2022,2.772,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,C8,11,d10 C8,12_02_2022,2.731,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,C9,11,d10 C9,12_02_2022,2.597,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,D1,12,d10 D1,12_02_2022,2.656,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,D2,12,d10 D2,12_02_2022,2.779,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,D3,12,d10 D3,12_02_2022,2.673,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,D4,12,d10 D4,12_02_2022,2.648,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,D5,12,d10 D5,12_02_2022,2.791,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,D6,12,d10 D6,12_02_2022,2.701,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,D7,12,d10 D7,12_02_2022,2.629,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,D8,12,d10 D8,12_02_2022,2.602,UW,,UW,UW-match
+d10,UW-d10,d10,3,match,D9,12,d10 D9,12_02_2022,2.782,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,A1,13,d16 home A1,12_02_2022,2.897,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,A2,13,d16 home A2,12_02_2022,2.721,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,A3,13,d16 home A3,12_02_2022,2.82,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,A4,13,d16 home A4,12_02_2022,2.779,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,A5,13,d16 home A5,12_02_2022,2.611,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,A6,13,d16 home A6,12_02_2022,2.839,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,B1,14,d16 home B1,12_02_2022,2.794,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,B2,14,d16 home B2,12_02_2022,2.578,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,B3,14,d16 home B3,12_02_2022,2.836,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,B4,14,d16 home B4,12_02_2022,2.611,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,B5,14,d16 home B5,12_02_2022,2.823,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,B6,14,d16 home B6,12_02_2022,2.867,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,C1,15,d16 home C1,12_02_2022,2.482,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,C2,15,d16 home C2,12_02_2022,2.594,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,C3,15,d16 home C3,12_02_2022,2.653,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,C4,15,d16 home C4,12_02_2022,2.51,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,C5,15,d16 home C5,12_02_2022,2.694,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,C6,15,d16 home C6,12_02_2022,2.657,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,D1,16,d16 home D1,12_02_2022,2.842,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,D2,16,d16 home D2,12_02_2022,2.971,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,D3,16,d16 home D3,12_02_2022,2.79,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,D4,16,d16 home D4,12_02_2022,2.866,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,D5,16,d16 home D5,12_02_2022,2.875,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,D6,16,d16 home D6,12_02_2022,2.833,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,D7,16,d16 home D7,12_02_2022,2.808,UW,,UW,UW-match
+d16 home,UW-d16 home,d16,4,match,D8,16,d16 home D8,12_02_2022,2.744,UW,,UW,UW-match
+d16 away,UW-d16 away,d16,5,mismatch,A1,17,d16 away A1,12_02_2022,2.509,UW,,LSTM,UW-mismatch
+d16 away,UW-d16 away,d16,5,mismatch,B1,18,d15 away B1,12_02_2022,2.476,UW,,LSTM,UW-mismatch
+d16 away,UW-d16 away,d16,5,mismatch,B2,18,d16 away B2,12_02_2022,2.477,UW,,LSTM,UW-mismatch
+d16 away,UW-d16 away,d16,5,mismatch,C1,19,d16 away C1,12_02_2022,2.504,UW,,LSTM,UW-mismatch
+d16 away,UW-d16 away,d16,5,mismatch,C2,19,d16 away C2,12_02_2022,2.58,UW,,LSTM,UW-mismatch
+d16 away,UW-d16 away,d16,5,mismatch,C3,19,d16 away C3,12_02_2022,2.658,UW,,LSTM,UW-mismatch
+d16 away,UW-d16 away,d16,5,mismatch,C4,19,d16 away C4,12_02_2022,2.432,UW,,LSTM,UW-mismatch
+d16 away,UW-d16 away,d16,5,mismatch,C5,19,d16 away C5,12_02_2022,2.629,UW,,LSTM,UW-mismatch
+d16 away,UW-d16 away,d16,5,mismatch,C6,19,d16 away C6,12_02_2022,2.635,UW,,LSTM,UW-mismatch
+d16 away,UW-d16 away,d16,5,mismatch,D1,20,d16 away D1,12_02_2022,2.557,UW,,LSTM,UW-mismatch
+d16 away,UW-d16 away,d16,5,mismatch,D2,20,d16 away D2,12_02_2022,2.575,UW,,LSTM,UW-mismatch
+d30 home,UW-d30 home,d30,6,match,A1,21,d30 home A1,12_02_2022,2.734,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,A2,21,d30 home A2,12_02_2022,2.755,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,A3,21,d30 home A3,12_02_2022,2.695,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,A4,21,d30 home A4,12_02_2022,2.889,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,A5,21,d30 home A5,12_02_2022,2.735,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,A6,21,d30 home A6,12_02_2022,2.695,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,A7,21,d30 home A7,12_02_2022,2.601,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,A8,21,d30 home A8,12_02_2022,2.648,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,B1,22,d30 home B1,12_02_2022,2.605,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,B2,22,d30 home B2,12_02_2022,2.753,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,B3,22,d30 home B3,12_02_2022,2.774,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,C1,23,d30 home C1,12_02_2022,2.626,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,C2,23,d30 home C2,12_02_2022,2.389,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,C3,23,d30 home C3,12_02_2022,2.606,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,C4,23,d30 home C4,12_02_2022,2.666,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,C5,23,d30 home C5,12_02_2022,2.571,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,C6,23,d30 home C6,12_02_2022,2.526,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,C7,23,d30 home C7,12_02_2022,2.547,UW,,UW,UW-match
+d30 home,UW-d30 home,d30,6,match,D1,24,d30 home D1,12_02_2022,2.491,UW,,UW,UW-match
+d30 away,UW-d30 away,d30,7,mismatch,B1,25,d30 away B1,12_02_2022,2.557,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,B2,25,d30 away B2,12_02_2022,2.538,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,B3,25,d30 away B3,12_02_2022,2.515,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,C1,26,d30 away C1,12_02_2022,2.561,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,C2,26,d30 away C2,12_02_2022,2.68,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,C3,26,d30 away C3,12_02_2022,2.689,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,C4,26,d30 away C4,12_02_2022,2.693,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,C5,26,d30 away C5,12_02_2022,2.645,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,D1,27,d30 away D1,12_02_2022,2.837,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,D2,27,d30 away D2,12_02_2022,2.743,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,D3,27,d30 away D3,12_02_2022,2.564,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,D4,27,d30 away D4,12_02_2022,2.781,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,D5,27,d30 away D5,12_02_2022,2.734,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,D6,27,d30 away D6,12_02_2022,2.665,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,D7,27,d30 away D7,12_02_2022,2.724,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,D8,27,d30 away D8,12_02_2022,2.752,UW,,LSTM,UW-mismatch
+d30 away,UW-d30 away,d30,7,mismatch,D9,27,d30 away D9,12_02_2022,2.574,UW,,LSTM,UW-mismatch
+mo6 home,UW-mo6 home,mo6,8,match,A1,28,mo6 home A1,01_10_2023,2.513,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,A2,28,mo6 home A2,01_10_2023,2.537,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,A3,28,mo6 home A3,01_10_2023,2.646,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,A4,28,mo6 home A4,01_10_2023,2.488,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,A5,28,mo6 home A5,01_10_2023,2.593,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,A6,28,mo6 home A6,01_10_2023,2.557,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,A7,28,mo6 home A7,01_10_2023,2.551,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,A8,28,mo6 home A8,01_10_2023,2.655,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,A9,28,mo6 home A9,01_10_2023,2.575,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,B1,29,mo6 home B1,01_10_2023,2.342,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,B2,29,mo6 home B2,01_10_2023,2.692,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,B3,29,mo6 home B3,01_10_2023,2.375,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,B4,29,mo6 home B4,01_10_2023,2.492,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,B5,29,mo6 home B5,01_10_2023,2.569,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,B7,29,mo6 home B7,01_10_2023,2.525,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,C1,30,mo6 home C1,01_10_2023,2.642,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,C2,30,mo6 home C2,01_10_2023,2.409,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,C3,30,mo6 home C3,01_10_2023,2.641,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,C4,30,mo6 home C4,01_10_2023,2.564,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,C5,30,mo6 home C5,01_10_2023,2.408,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,C6,30,mo6 home C6,01_10_2023,2.62,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,D1,31,mo6 home D1,01_10_2023,2.735,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,D2,31,mo6 home D2,01_10_2023,2.662,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,D3,31,mo6 home D3,01_10_2023,2.643,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,D4,31,mo6 home D4,01_10_2023,2.508,UW,,UW,UW-match
+mo6 home,UW-mo6 home,mo6,8,match,D5,31,mo6 home D5,01_10_2023,2.554,UW,,UW,UW-match
+mo6 away,UW-mo6 away,mo6,9,mismatch,A1,32,mo6 away A1,01_10_2023,2.566,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,A2,32,mo6 away A2,01_10_2023,2.692,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,A3,32,mo6 away A3,01_10_2023,2.53,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,B1,33,mo6 away B1,01_10_2023,2.425,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,B2,33,mo6 away B2,01_10_2023,2.817,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,B3,33,mo6 away B3,01_10_2023,2.453,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,B4,33,mo6 away B4,01_10_2023,2.678,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,B5,33,mo6 away B5,01_10_2023,2.411,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,C1,34,mo6 away C1,01_10_2023,2.507,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,C10,34,mo6 away C10,01_10_2023,2.603,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,C11,34,mo6 away C11,01_10_2023,2.574,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,C12,34,mo6 away C12,01_10_2023,2.575,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,C2,34,mo6 away C2,01_10_2023,2.5,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,C3,34,mo6 away C3,01_10_2023,2.764,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,C4,34,mo6 away C4,01_10_2023,2.602,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,C5,34,mo6 away C5,01_10_2023,2.588,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,C6,34,mo6 away C6,01_10_2023,2.651,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,C7,34,mo6 away C7,01_10_2023,2.768,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,C8,34,mo6 away C8,01_10_2023,2.721,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,C9,34,mo6 away C9,01_10_2023,2.725,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,D1,35,mo6 away D1,01_10_2023,2.488,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,D2,35,mo6 away D2,01_10_2023,2.622,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,D3,35,mo6 away D3,01_10_2023,2.71,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,D4,35,mo6 away D4,01_10_2023,2.59,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,D5,35,mo6 away D5,01_10_2023,2.365,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,D6,35,mo6 away D6,01_10_2023,2.73,UW,,LSTM,UW-mismatch
+mo6 away,UW-mo6 away,mo6,9,mismatch,D7,35,mo6 away D7,01_10_2023,2.617,UW,,LSTM,UW-mismatch
+0h,LSTM-0h,0h,10,match,F1,36,F1A1,,2.51,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F1,36,F1A2,,2.797,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F1,36,F1A3,,2.52,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F1,36,F1A4,,2.912,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F1,36,F1A5,,2.537,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F1,36,F1A6,,2.531,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F1,36,F1A7,,2.481,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F1,36,F1A8,,2.739,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F1,36,F1A9,,2.75,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F2,37,F2A1,,2.857,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F2,37,F2A2,,2.502,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F2,37,F2A3,,2.674,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F2,37,F2A4,,2.751,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F2,37,F2A5,,2.502,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F2,37,F2A6,,2.569,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F3,38,F3A1,,2.704,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F3,38,F3A2,,2.611,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F3,38,F3A3,,2.842,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F4,39,F4A1,,2.968,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F4,39,F4A2,,2.744,LSTM,5/31/22,LSTM,LSTM-match
+0h,LSTM-0h,0h,10,match,F4,39,F4A3,,2.61,LSTM,5/31/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,241,40,241F1,,2.486,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,241,40,241F2,,2.683,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,241,40,241F3,,2.572,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,241,40,241F4,,2.405,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,241,40,241F5,,2.722,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,242,41,242F1,,2.487,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,242,41,242F2,,2.679,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,242,41,242F3,,2.52,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,243,42,243F1,,2.432,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,243,42,243F2,,2.416,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,243,42,243F3,,2.584,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,244,43,244F1,,2.626,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,244,43,244F2,,2.423,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,244,43,244F3,,2.432,LSTM,3/6/22,LSTM,LSTM-match
+24h,LSTM-24h,24h,11,match,244,43,244F4,,2.558,LSTM,3/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-1,44,D101F1,,2.637,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-1,44,D101F2,,2.713,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-1,44,D101F3,,2.584,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-1,44,D101F4,,2.8,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-2,45,D102F1,,2.751,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-2,45,D102F2,,2.873,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-2,45,D102F3,,2.845,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-2,45,D102F4,,2.848,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-2,45,D102F5,,2.941,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-2,45,D102F6,,2.615,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-2,45,D102F7,,2.755,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-3,46,D103F1,,2.67,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-3,46,D103F2,,2.994,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-3,46,D103F3,,2.493,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-3,46,D103F4,,2.909,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-3,46,D103F5,,2.835,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-3,46,D103F6,,2.95,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-3,46,D103F7,,2.848,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-4,47,D104F1,,2.592,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-4,47,D104F2,,2.844,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-4,47,D104F3,,2.904,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-4,47,D104F4,,2.696,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-4,47,D104F5,,2.842,LSTM,8/6/22,LSTM,LSTM-match
+d10,LSTM-d10,d10,12,match,D10-5?,47,D105F5,,2.798,LSTM,8/6/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-1,48,L161F1,,2.595,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-1,48,L161F2,,2.471,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-1,48,L161F3,,2.737,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-1,48,L161F4,,2.502,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-1,48,L161F5,,2.546,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-2,49,L162F1,,2.495,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-2,49,L162F2,,2.519,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-2,49,L162F3,,2.545,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-2,49,L162F4,,2.812,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-2,49,L162F5,,2.414,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-2,49,L162F6,,2.479,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-3,50,L163F1,,2.317,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-3,50,L163F2,,2.699,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-3,50,L163F4,,2.509,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-3,50,L163F5,,2.484,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-3,50,L163F6,,2.674,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-3,50,L163F7,,2.487,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-4,51,L164F1,,2.466,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-4,51,L164F2,,2.688,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-4,51,L164F3,,2.461,LSTM,6/16/22,LSTM,LSTM-match
+d16 home,LSTM-d16 home,d16,13,match,L16-4,51,L164F4,,2.617,LSTM,6/16/22,LSTM,LSTM-match
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-1,52,W161F3,,2.68,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-1,52,W161F4,,2.774,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-1,52,W161F6,,2.591,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-1,52,W161F7,,2.452,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-1,52,W161F8,,2.424,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-1,52,W161F9,,2.194,LSTM,6/16/22,UW,LSTM-mismatch
+d16 home,LSTM-d16 home,d16,13,mismatch,W16-1,52,W161F2,,2.689,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-2,53,W162F1,,2.4,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-2,53,W162F2,,2.643,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-2,53,W162F3,,2.561,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-2,53,W162F4,,2.555,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-2,53,W162F5,,3.032,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-2,53,W162F6,,2.431,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-2,53,W162F7,,2.667,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-2,53,W162F8,,2.685,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-2,53,W162F9,,2.455,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-2,53,W162F10,,2.542,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-3,54,W163F1,,2.612,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-3,54,W163F2,,2.295,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-3,54,W163F3,,2.833,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-3,54,W163F4,,2.585,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-4,55,W164F1,,2.599,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-4,55,W164F2,,2.34,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-4,55,W164F3,,2.569,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-4,55,W164F4,,2.447,LSTM,6/16/22,UW,LSTM-mismatch
+d16 away,LSTM-d16 away,d16,14,mismatch,W16-4,55,W164F5,,2.794,LSTM,6/16/22,UW,LSTM-mismatch
+d30 home,LSTM-d30 home,d30,15,match,L30-1,56,L301F1,,2.81,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-1,56,L301F3,,2.82,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-1,56,L301F4,,2.697,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-1,56,L301F5,,2.92,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-1,56,L301F6,,2.716,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-1,56,L301F7,,2.774,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-1,56,L301F8,,2.816,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-1,56,L301F9,,2.947,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-2,57,L302F1,,2.932,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-2,57,L302F2,,2.479,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-2,57,L302F3,,2.773,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-2,57,L302F4,,2.73,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-2,57,L302F5,,2.605,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-2,57,L302F6,,2.677,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-3,58,L303F1,,2.884,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-3,58,L303F2,,2.733,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-3,58,L303F3,,2.632,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-3,58,L303F4,,2.735,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-3,58,L303F5,,2.871,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-3,58,L303F6,,2.789,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-3,58,L303F7,,2.793,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-3,58,L303F8,,2.88,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-3,58,L303F9,,2.589,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-3,58,L303F10,,2.733,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-4,59,L304F1,,2.534,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-4,59,L304F2,,2.773,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-4,59,L304F3,,2.718,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-4,59,L304F4,,2.96,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-4,59,L304F5,,2.713,LSTM,6/27/22,LSTM,LSTM-match
+d30 home,LSTM-d30 home,d30,15,match,L30-4,59,L304F6,,2.718,LSTM,6/27/22,LSTM,LSTM-match
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-1,60,W301F1,,2.743,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-1,60,W301F2,,2.865,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-1,60,W301F3,,3.038,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-1,60,W301F4,,2.821,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-1,60,W301F5,,2.627,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-2,61,W302F1,,2.619,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-2,61,W302F2,,2.553,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-2,61,W302F3,,2.792,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-2,61,W302F4,,2.704,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-2,61,W302F5,,3.082,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-2,61,W302F6,,2.533,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-3,62,W303F1,,2.964,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-3,62,W303F2,,2.866,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-3,62,W303F3,,2.749,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-3,62,W303F4,,2.825,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-4,63,W304F1,,2.853,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-4,63,W304F2,,2.906,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-4,63,W304F3,,2.674,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-4,63,W304F4,,2.936,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-4,63,W304F5,,3.086,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-4,63,W304F6,,2.771,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-4,63,W304F7,,3.017,LSTM,6/27/22,UW,LSTM-mismatch
+d30 away,LSTM-d30 away,d30,16,mismatch,W30-4,63,W304F8,,2.856,LSTM,6/27/22,UW,LSTM-mismatch
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-1,64,L6M1F1,,2.966,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-1,64,L6M1F2,,2.946,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-1,64,L6M1F3,,2.838,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-1,64,L6M1F4,,3.008,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-1,64,L6M1F5,,2.789,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-1,64,L6M1F6,,2.788,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-1,64,L6M2F1,,2.883,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-2,65,L6M2F2,,2.746,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-2,65,L6M2F3,,2.729,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-2,65,L6M2F4,,2.685,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-2,65,L6M2F5,,2.665,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-2,65,L6M2F6,,3.119,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-2,65,L6M2F7,,2.881,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-2,65,L6M2F8,,2.725,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-2,65,L6M2F9,,2.64,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-2,65,L6M2F10,,2.803,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-3,66,L6M3F1,,2.82,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-3,66,L6M3F2,,2.904,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-3,66,L6M3F3,,2.65,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-3,66,L6M3F4,,2.571,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-3,66,L6M3F5,,3.006,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-3,66,L6M3F6,,2.685,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-3,66,L6M3F7,,2.884,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F1,,2.932,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F2,,2.845,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F3,,2.807,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F4,,2.762,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F5,,2.67,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F6,,2.828,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F7,,3.028,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F8,,2.984,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F9,,2.86,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F10,,2.805,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F11,,2.661,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F12,,2.75,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F13,,2.961,LSTM,12/13/22,LSTM,LSTM-match
+mo6 home,LSTM-mo6 home,mo6,17,match,L6M-4,67,L6M4F14,,2.765,LSTM,12/13/22,LSTM,LSTM-match
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F1,,3.092,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F2,,3.006,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F3,,2.684,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F4,,2.787,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F5,,2.906,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F6,,2.767,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F7,,2.812,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F8,,2.882,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F9,,2.96,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F10,,2.713,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F11,,2.958,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F12,,2.921,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F13,,2.431,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-1,68,W6M1F14,,2.615,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-2,69,W6M2F1,,2.94,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-2,69,W6M2F2,,2.95,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-2,69,W6M2F3,,2.928,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-2,69,W6M2F4,,2.844,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-2,69,W6M2F5,,2.967,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-2,69,W6M2F6,,2.811,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-2,69,W6M2F7,,2.775,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-2,69,W6M2F8,,2.592,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-2,69,W6M2F9,,2.781,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-2,69,W6M2F10,,2.824,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-2,69,W6M2F11,,2.807,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-3,70,W6M3F1,,2.899,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-3,70,W6M3F2,,2.974,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-3,70,W6M3F3,,2.91,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-3,70,W6M3F4,,2.968,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-3,70,W6M3F5,,2.954,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-3,70,W6M3F6,,2.949,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-3,70,W6M3F7,,2.861,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-3,70,W6M3F8,,2.842,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-3,70,W6M3F9,,2.83,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-4,71,W6M4F1,,3.099,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-4,71,W6M4F2,,2.365,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-4,71,W6M4F3,,3.067,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-4,71,W6M4F4,,2.841,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-4,71,W6M4F5,,2.755,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-4,71,W6M4F6,,2.905,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-4,71,W6M4F7,,2.734,LSTM,12/13/22,UW,LSTM-mismatch
+mo6 away,LSTM-mo6 away,mo6,18,mismatch,W6M-4,71,W6M4F8,,2.828,LSTM,12/13/22,UW,LSTM-mismatch
